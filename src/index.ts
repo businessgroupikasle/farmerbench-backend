@@ -1,5 +1,7 @@
-import express from 'express';
+﻿import express from 'express';
 import cors from 'cors';
+import path from 'path';
+import fs from 'fs';
 import { env } from './config/env';
 import { prisma } from './config/database';
 import apiRouter from './routes';
@@ -20,6 +22,17 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Ensure and Serve Uploaded Static Assets
+const uploadsDir = fs.existsSync(path.resolve(__dirname, '../uploads'))
+  ? path.resolve(__dirname, '../uploads')
+  : path.join(process.cwd(), 'uploads');
+
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+app.use('/uploads', express.static(uploadsDir));
+
 // Health Check Endpoint
 app.get('/api/health', async (_req, res) => {
   try {
@@ -32,6 +45,7 @@ app.get('/api/health', async (_req, res) => {
       services: {
         database: 'connected',
         api: 'running',
+        uploads: 'served',
       },
     });
   } catch (error: any) {
@@ -62,9 +76,9 @@ app.use(errorHandler);
 
 // Start Server
 const server = app.listen(env.PORT, () => {
-  console.log(`🚀 FormerBench Backend API listening on port ${env.PORT}`);
-  console.log(`📡 Environment: ${env.NODE_ENV}`);
-  console.log(`🔒 Allowed CORS Origin: ${env.CORS_ORIGIN}`);
+  console.log(`🚀 AgriFlow Backend API listening on port ${env.PORT}`);
+  console.log(`📁 Serving uploads from: ${uploadsDir}`);
+  console.log(`🌐 Allowed CORS Origin: ${env.CORS_ORIGIN}`);
 });
 
 // Graceful Shutdown
