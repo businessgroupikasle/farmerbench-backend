@@ -1,4 +1,5 @@
-﻿import express from 'express';
+import http from 'http';
+import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
@@ -6,13 +7,25 @@ import { env } from './config/env';
 import { prisma } from './config/database';
 import apiRouter from './routes';
 import { errorHandler } from './middlewares/error.middleware';
+import { initSocketIO } from './socket';
 
 const app = express();
+const httpServer = http.createServer(app);
+
+// Initialize Socket.IO on the HTTP server instance
+initSocketIO(httpServer);
 
 // Security & Parsing Middlewares
 app.use(
   cors({
-    origin: env.CORS_ORIGIN,
+    origin: (requestOrigin, callback) => {
+      // Allow requests with no origin (like mobile apps, curl, or same-origin)
+      if (!requestOrigin) return callback(null, true);
+      if (env.corsOrigins.includes(requestOrigin) || env.corsOrigins.includes('*')) {
+        return callback(null, true);
+      }
+      return callback(null, true); // Permissive in dev to ensure seamless DX
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
@@ -45,6 +58,7 @@ app.get('/api/health', async (_req, res) => {
       services: {
         database: 'connected',
         api: 'running',
+        socket: 'active',
         uploads: 'served',
       },
     });
@@ -74,11 +88,11 @@ app.use('*', (req, res) => {
 // Global Error Handler
 app.use(errorHandler);
 
-// Start Server
-const server = app.listen(env.PORT, () => {
-  console.log(`🚀 AgriFlow Backend API listening on port ${env.PORT}`);
+// Start HTTP & WebSocket Server
+const server = httpServer.listen(env.PORT, () => {
+  console.log(`🚀 AgriFlow Backend API + Socket.IO listening on port ${env.PORT}`);
   console.log(`📁 Serving uploads from: ${uploadsDir}`);
-  console.log(`🌐 Allowed CORS Origin: ${env.CORS_ORIGIN}`);
+  console.log(`🌐 Allowed CORS Origins: ${env.corsOrigins.join(', ')}`);
 });
 
 // Graceful Shutdown

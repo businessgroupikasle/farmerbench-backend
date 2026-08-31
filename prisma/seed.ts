@@ -7,6 +7,7 @@ async function main() {
   console.log('🌱 Starting database seed...');
 
   // 1. Clean existing records in correct relation order
+  await prisma.otp.deleteMany();
   await prisma.review.deleteMany();
   await prisma.payment.deleteMany();
   await prisma.orderItem.deleteMany();
@@ -26,9 +27,14 @@ async function main() {
   const admin = await prisma.user.create({
     data: {
       email: 'admin@formerbench.dev',
-      name: 'Alexander Pierce (Admin)',
+      name: 'Arun(Super Admin)',
       password: defaultPassword,
       role: Role.ADMIN,
+      phone: '+91 98400 12345',
+      emailVerified: true,
+      location: 'Chennai Headquarters',
+      crops: 'Enterprise Admin',
+      status: 'Active',
       avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
     },
   });
@@ -36,24 +42,49 @@ async function main() {
   const customer1 = await prisma.user.create({
     data: {
       email: 'customer@formerbench.dev',
-      name: 'Sarah Jenkins',
+      name: 'Ramanathan K.',
       password: defaultPassword,
       role: Role.CUSTOMER,
-      avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
+      phone: '+91 98421 88321',
+      emailVerified: true,
+      location: 'Thanjavur, Tamil Nadu',
+      crops: 'Paddy / 15 Acres',
+      status: 'Active',
+      avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
     },
   });
 
   const customer2 = await prisma.user.create({
     data: {
-      email: 'marcus.vance@example.com',
-      name: 'Marcus Vance',
+      email: 'meena.devi@farmmail.in',
+      name: 'Meena Devi',
       password: defaultPassword,
       role: Role.CUSTOMER,
-      avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+      phone: '+91 97892 44102',
+      emailVerified: true,
+      location: 'Erode, Tamil Nadu',
+      crops: 'Tomato & Vegetables / 6 Acres',
+      status: 'Active',
+      avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
     },
   });
 
-  console.log('👤 Created demo users (Admin & Customers).');
+  const customer3 = await prisma.user.create({
+    data: {
+      email: 'suresh.babu@cottonagri.com',
+      name: 'Suresh Babu',
+      password: defaultPassword,
+      role: Role.CUSTOMER,
+      phone: '+91 94432 11980',
+      emailVerified: true,
+      location: 'Madurai, Tamil Nadu',
+      crops: 'Cotton & Pulses / 12 Acres',
+      status: 'Active',
+      avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+    },
+  });
+
+  console.log('👤 Created demo users (Admin & Farmers).');
 
   // 3. Create Categories
   const categories = await Promise.all([

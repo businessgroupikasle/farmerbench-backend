@@ -32,14 +32,26 @@ enum PaymentMethod {
   PAYPAL
   STRIPE
   CASH_ON_DELIVERY
+  RAZORPAY
+}
+
+enum OtpPurpose {
+  REGISTRATION
+  LOGIN
+  PASSWORD_RESET
 }
 
 model User {
   id              String            @id @default(uuid())
   email           String            @unique
-  password        String
+  password        String            @default("")
   name            String
   role            Role              @default(CUSTOMER)
+  phone           String?
+  emailVerified   Boolean           @default(false)
+  location        String?
+  crops           String?
+  status          String            @default("Active")
   avatarUrl       String?
   cart            Cart?
   orders          Order[]
@@ -49,6 +61,22 @@ model User {
   updatedAt       DateTime          @updatedAt
 
   @@index([email])
+  @@index([phone])
+}
+
+model Otp {
+  id         String     @id @default(uuid())
+  identifier String
+  otpHash    String
+  purpose    OtpPurpose @default(REGISTRATION)
+  expiresAt  DateTime
+  attempts   Int        @default(0)
+  consumedAt DateTime?
+  metadata   Json?
+  createdAt  DateTime   @default(now())
+
+  @@index([identifier, purpose])
+  @@index([expiresAt])
 }
 
 model Category {

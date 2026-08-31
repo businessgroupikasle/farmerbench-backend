@@ -116,6 +116,65 @@ export const CreateReviewSchema = z.object({
   comment: z.string().min(5, 'Comment must be at least 5 characters').max(1000),
 });
 
+// OTP Auth Schemas
+export const RegisterOtpSchema = z.object({
+  name: z.string().max(100).optional().default('Farmer User'),
+  email: z.string().email('Invalid email address'),
+  phone: z.string().optional().nullable(),
+  location: z.string().optional().nullable(),
+  crops: z.string().optional().nullable(),
+  password: z.string().optional(),
+});
+
+export const VerifyRegisterOtpSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  otp: z.string().length(6, 'OTP must be exactly 6 digits').regex(/^\d{6}$/, 'OTP must be numeric'),
+  name: z.string().optional(),
+  password: z.string().optional(),
+  phone: z.string().optional().nullable(),
+  location: z.string().optional().nullable(),
+  crops: z.string().optional().nullable(),
+});
+
+export const ResendOtpSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  purpose: z.enum(['REGISTRATION', 'LOGIN', 'PASSWORD_RESET']).default('REGISTRATION'),
+});
+
+export const LoginOtpSchema = z.object({
+  email: z.string().email('Invalid email address'),
+});
+
+export const VerifyLoginOtpSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  otp: z.string().length(6, 'OTP must be exactly 6 digits').regex(/^\d{6}$/, 'OTP must be numeric'),
+});
+
+// Payment Schemas (Razorpay)
+export const CreateRazorpayOrderSchema = z.object({
+  orderId: z.string().uuid('Invalid order ID'),
+});
+
+export const VerifyRazorpayPaymentSchema = z.object({
+  orderId: z.string().uuid('Invalid order ID'),
+  razorpayOrderId: z.string().min(1, 'Razorpay Order ID is required'),
+  razorpayPaymentId: z.string().min(1, 'Razorpay Payment ID is required'),
+  razorpaySignature: z.string().min(1, 'Razorpay Signature is required'),
+});
+
+// Customer Management & Admin Schemas
+export const CustomerQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(100).default(20),
+  search: z.string().optional(),
+  status: z.string().optional(),
+  sortBy: z.enum(['newest', 'name_asc', 'name_desc', 'orders_count']).default('newest'),
+});
+
+export const TestSmtpSchema = z.object({
+  recipientEmail: z.string().email('Invalid recipient email address'),
+});
+
 // Type inferences
 export type RegisterInput = z.infer<typeof RegisterSchema>;
 export type LoginInput = z.infer<typeof LoginSchema>;
@@ -133,3 +192,12 @@ export type ShippingAddressInput = z.infer<typeof ShippingAddressSchema>;
 export type CreateOrderInput = z.infer<typeof CreateOrderSchema>;
 export type UpdateOrderStatusInput = z.infer<typeof UpdateOrderStatusSchema>;
 export type CreateReviewInput = z.infer<typeof CreateReviewSchema>;
+export type RegisterOtpInput = z.infer<typeof RegisterOtpSchema>;
+export type VerifyRegisterOtpInput = z.infer<typeof VerifyRegisterOtpSchema>;
+export type ResendOtpInput = z.infer<typeof ResendOtpSchema>;
+export type LoginOtpInput = z.infer<typeof LoginOtpSchema>;
+export type VerifyLoginOtpInput = z.infer<typeof VerifyLoginOtpSchema>;
+export type CreateRazorpayOrderInput = z.infer<typeof CreateRazorpayOrderSchema>;
+export type VerifyRazorpayPaymentInput = z.infer<typeof VerifyRazorpayPaymentSchema>;
+export type CustomerQueryInput = z.infer<typeof CustomerQuerySchema>;
+export type TestSmtpInput = z.infer<typeof TestSmtpSchema>;

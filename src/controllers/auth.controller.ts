@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { authService } from '../services/auth.service';
+import { otpService } from '../services/otp.service';
 import { sendSuccess } from '../utils/response';
 
 export class AuthController {
@@ -15,6 +16,69 @@ export class AuthController {
   async login(req: Request, res: Response, next: NextFunction) {
     try {
       const result = await authService.login(req.body);
+      return sendSuccess(res, result, 'Login successful');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async registerOtp(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await otpService.sendRegistrationOtp(req.body);
+      return sendSuccess(res, result, result.message);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async verifyRegisterOtp(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { email, otp, name, phone, location, crops, password } = req.body;
+      const result = await otpService.verifyRegistrationOtp(email, otp, {
+        name,
+        phone,
+        location,
+        crops,
+        password,
+      });
+      return sendSuccess(res, result, 'Account verified and registration complete!', 201);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async resendOtp(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { email, purpose } = req.body;
+      let result;
+      if (purpose === 'LOGIN') {
+        result = await otpService.sendLoginOtp(email);
+      } else {
+        result = await otpService.sendRegistrationOtp({
+          email,
+          name: email.split('@')[0],
+        });
+      }
+      return sendSuccess(res, result, 'Verification code resent successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async loginOtp(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { email } = req.body;
+      const result = await otpService.sendLoginOtp(email);
+      return sendSuccess(res, result, result.message);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async verifyLoginOtp(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { email, otp } = req.body;
+      const result = await otpService.verifyLoginOtp(email, otp);
       return sendSuccess(res, result, 'Login successful');
     } catch (error) {
       next(error);

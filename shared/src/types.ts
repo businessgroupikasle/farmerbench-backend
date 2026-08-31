@@ -18,7 +18,10 @@ export type PaymentMethod =
   | 'CREDIT_CARD' 
   | 'PAYPAL' 
   | 'STRIPE' 
-  | 'CASH_ON_DELIVERY';
+  | 'CASH_ON_DELIVERY'
+  | 'RAZORPAY';
+
+export type OtpPurpose = 'REGISTRATION' | 'LOGIN' | 'PASSWORD_RESET';
 
 // User & Auth
 export interface User {
@@ -26,6 +29,11 @@ export interface User {
   email: string;
   name: string;
   role: Role;
+  phone?: string | null;
+  emailVerified?: boolean;
+  location?: string | null;
+  crops?: string | null;
+  status?: string;
   avatarUrl?: string | null;
   createdAt: string | Date;
   updatedAt: string | Date;
@@ -35,6 +43,20 @@ export interface AuthResponse {
   user: User;
   token: string;
   refreshToken?: string;
+}
+
+export interface OtpResponse {
+  success: boolean;
+  message: string;
+  email: string;
+  expiresInSeconds?: number;
+  cooldownSeconds?: number;
+}
+
+export interface CustomerStats {
+  totalCustomers: number;
+  activeCustomers: number;
+  verifiedCustomers: number;
 }
 
 // Category
