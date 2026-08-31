@@ -86,7 +86,7 @@ export class OtpService {
     console.log(`======================================================\n`);
 
     // Dispatch email asynchronously
-    emailService.sendRegistrationOtpEmail(email, rawOtp, input.name).catch((err) => {
+    emailService.sendRegistrationOtpEmail(email, rawOtp, input.name || email.split('@')[0]).catch((err) => {
       console.error('Failed to send registration OTP email:', err);
     });
 

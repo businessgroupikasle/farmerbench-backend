@@ -1,4 +1,4 @@
-import { Server as SocketIOServer, Socket } from 'socket.io';
+﻿import { Server as SocketIOServer, Socket } from 'socket.io';
 import { Server as HttpServer } from 'http';
 import { env } from '../config/env';
 
@@ -46,11 +46,43 @@ export const emitCustomerCreated = (customer: {
   status?: string;
   createdAt: string | Date;
 }) => {
-  if (!io) {
-    console.warn('⚠️ Cannot emit customer:created - Socket.IO not initialized');
-    return;
-  }
-
-  console.log(`⚡ Broadcasting Socket.IO event 'customer:created' for: ${customer.name} (${customer.email})`);
+  if (!io) return;
+  console.log(`📢 Broadcasting Socket.IO event 'customer:created' for: ${customer.name}`);
   io.emit('customer:created', customer);
+};
+
+export const emitProductCreated = (product: any) => {
+  if (!io) return;
+  console.log(`📢 Broadcasting Socket.IO event 'product:created': ${product.title} (${product.id})`);
+  io.emit('product:created', product);
+};
+
+export const emitProductUpdated = (product: any) => {
+  if (!io) return;
+  console.log(`📢 Broadcasting Socket.IO event 'product:updated': ${product.title} (${product.id})`);
+  io.emit('product:updated', product);
+};
+
+export const emitProductDeleted = (payload: { id: string }) => {
+  if (!io) return;
+  console.log(`📢 Broadcasting Socket.IO event 'product:deleted': (${payload.id})`);
+  io.emit('product:deleted', payload);
+};
+
+export const emitCategoryCreated = (category: any) => {
+  if (!io) return;
+  console.log(`📢 Broadcasting Socket.IO event 'category:created': ${category.name} (${category.id})`);
+  io.emit('category:created', category);
+};
+
+export const emitCategoryUpdated = (category: any) => {
+  if (!io) return;
+  console.log(`📢 Broadcasting Socket.IO event 'category:updated': ${category.name} (${category.id})`);
+  io.emit('category:updated', category);
+};
+
+export const emitCategoryDeleted = (payload: { id: string }) => {
+  if (!io) return;
+  console.log(`📢 Broadcasting Socket.IO event 'category:deleted': (${payload.id})`);
+  io.emit('category:deleted', payload);
 };

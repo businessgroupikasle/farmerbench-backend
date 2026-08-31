@@ -1,6 +1,7 @@
-import { categoryRepository } from '../repositories/category.repository';
+﻿import { categoryRepository } from '../repositories/category.repository';
 import { CreateCategoryInput, UpdateCategoryInput } from '@formerbench/shared';
 import { AppError } from '../utils/response';
+import { emitCategoryCreated, emitCategoryUpdated, emitCategoryDeleted } from '../socket';
 
 export class CategoryService {
   async getCategories() {
@@ -29,7 +30,9 @@ export class CategoryService {
       throw new AppError('A category with this slug already exists', 400);
     }
 
-    return categoryRepository.create(input);
+    const created = await categoryRepository.create(input);
+    emitCategoryCreated(created);
+    return created;
   }
 
   async updateCategory(id: string, input: UpdateCategoryInput) {
@@ -45,7 +48,9 @@ export class CategoryService {
       }
     }
 
-    return categoryRepository.update(id, input);
+    const updated = await categoryRepository.update(id, input);
+    emitCategoryUpdated(updated);
+    return updated;
   }
 
   async deleteCategory(id: string) {
@@ -54,7 +59,9 @@ export class CategoryService {
       throw new AppError('Category not found', 404);
     }
 
-    return categoryRepository.delete(id);
+    const result = await categoryRepository.delete(id);
+    emitCategoryDeleted({ id });
+    return result;
   }
 }
 

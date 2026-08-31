@@ -4,42 +4,57 @@ import { sendError } from '../utils/response';
 
 export const validateBody = (schema: ZodSchema<any>) => {
   return async (req: Request, res: Response, next: NextFunction) => {
+    if (!schema || typeof schema.parseAsync !== 'function') {
+      console.error('CRITICAL: validateBody received an undefined or invalid schema!');
+      return sendError(res, 'Internal validation configuration error', 500);
+    }
     try {
       req.body = await schema.parseAsync(req.body);
       next();
-    } catch (error) {
+    } catch (error: any) {
       if (error instanceof ZodError) {
-        return sendError(res, 'Validation failed', 400, error.format());
+        const firstIssue = error.issues[0]?.message || 'Validation failed';
+        return sendError(res, firstIssue, 400, error.format());
       }
-      return sendError(res, 'Bad request', 400);
+      return sendError(res, error?.message || 'Bad request', 400);
     }
   };
 };
 
 export const validateQuery = (schema: ZodSchema<any>) => {
   return async (req: Request, res: Response, next: NextFunction) => {
+    if (!schema || typeof schema.parseAsync !== 'function') {
+      console.error('CRITICAL: validateQuery received an undefined or invalid schema!');
+      return sendError(res, 'Internal validation configuration error', 500);
+    }
     try {
       req.query = await schema.parseAsync(req.query);
       next();
-    } catch (error) {
+    } catch (error: any) {
       if (error instanceof ZodError) {
-        return sendError(res, 'Invalid query parameters', 400, error.format());
+        const firstIssue = error.issues[0]?.message || 'Invalid query parameters';
+        return sendError(res, firstIssue, 400, error.format());
       }
-      return sendError(res, 'Bad request', 400);
+      return sendError(res, error?.message || 'Bad request', 400);
     }
   };
 };
 
 export const validateParams = (schema: ZodSchema<any>) => {
   return async (req: Request, res: Response, next: NextFunction) => {
+    if (!schema || typeof schema.parseAsync !== 'function') {
+      console.error('CRITICAL: validateParams received an undefined or invalid schema!');
+      return sendError(res, 'Internal validation configuration error', 500);
+    }
     try {
       req.params = await schema.parseAsync(req.params);
       next();
-    } catch (error) {
+    } catch (error: any) {
       if (error instanceof ZodError) {
-        return sendError(res, 'Invalid path parameters', 400, error.format());
+        const firstIssue = error.issues[0]?.message || 'Invalid path parameters';
+        return sendError(res, firstIssue, 400, error.format());
       }
-      return sendError(res, 'Bad request', 400);
+      return sendError(res, error?.message || 'Bad request', 400);
     }
   };
 };

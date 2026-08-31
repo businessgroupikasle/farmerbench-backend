@@ -1,8 +1,9 @@
-import { productRepository } from '../repositories/product.repository';
+﻿import { productRepository } from '../repositories/product.repository';
 import { categoryRepository } from '../repositories/category.repository';
 import { reviewRepository } from '../repositories/review.repository';
 import { CreateProductInput, UpdateProductInput, ProductQueryInput, CreateReviewInput } from '@formerbench/shared';
 import { AppError } from '../utils/response';
+import { emitProductCreated, emitProductUpdated, emitProductDeleted } from '../socket';
 
 export class ProductService {
   async getProducts(params: ProductQueryInput) {
@@ -41,7 +42,9 @@ export class ProductService {
       throw new AppError('A product with this slug already exists', 400);
     }
 
-    return productRepository.create(input);
+    const created = await productRepository.create(input);
+    emitProductCreated(created);
+    return created;
   }
 
   async updateProduct(id: string, input: UpdateProductInput) {
@@ -64,7 +67,9 @@ export class ProductService {
       }
     }
 
-    return productRepository.update(id, input);
+    const updated = await productRepository.update(id, input);
+    emitProductUpdated(updated);
+    return updated;
   }
 
   async deleteProduct(id: string) {
@@ -73,7 +78,9 @@ export class ProductService {
       throw new AppError('Product not found', 404);
     }
 
-    return productRepository.delete(id);
+    const result = await productRepository.delete(id);
+    emitProductDeleted({ id });
+    return result;
   }
 
   async addReview(userId: string, input: CreateReviewInput) {
