@@ -150,6 +150,31 @@ export const VerifyLoginOtpSchema = z.object({
   otp: z.string().length(6, 'OTP must be exactly 6 digits').regex(/^\d{6}$/, 'OTP must be numeric'),
 });
 
+export const ForgotPasswordSchema = z.object({
+  email: z.string().email('Invalid email address'),
+});
+
+export const VerifyResetOtpSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  otp: z.string().length(6, 'OTP must be exactly 6 digits').regex(/^\d{6}$/, 'OTP must be numeric'),
+});
+
+export const ResetPasswordSchema = z.object({
+  resetToken: z.string().min(1, 'Reset token is required'),
+  newPassword: z.string().min(6, 'Password must be at least 6 characters').max(100),
+  confirmPassword: z.string().optional(),
+}).refine(
+  (data) => !data.confirmPassword || data.newPassword === data.confirmPassword,
+  {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
+  }
+);
+
+export const ResendResetOtpSchema = z.object({
+  email: z.string().email('Invalid email address'),
+});
+
 // Payment Schemas (Razorpay)
 export const CreateRazorpayOrderSchema = z.object({
   orderId: z.string().uuid('Invalid order ID'),
@@ -197,6 +222,10 @@ export type VerifyRegisterOtpInput = z.infer<typeof VerifyRegisterOtpSchema>;
 export type ResendOtpInput = z.infer<typeof ResendOtpSchema>;
 export type LoginOtpInput = z.infer<typeof LoginOtpSchema>;
 export type VerifyLoginOtpInput = z.infer<typeof VerifyLoginOtpSchema>;
+export type ForgotPasswordInput = z.infer<typeof ForgotPasswordSchema>;
+export type VerifyResetOtpInput = z.infer<typeof VerifyResetOtpSchema>;
+export type ResetPasswordInput = z.infer<typeof ResetPasswordSchema>;
+export type ResendResetOtpInput = z.infer<typeof ResendResetOtpSchema>;
 export type CreateRazorpayOrderInput = z.infer<typeof CreateRazorpayOrderSchema>;
 export type VerifyRazorpayPaymentInput = z.infer<typeof VerifyRazorpayPaymentSchema>;
 export type CustomerQueryInput = z.infer<typeof CustomerQuerySchema>;

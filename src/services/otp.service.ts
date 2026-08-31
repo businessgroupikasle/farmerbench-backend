@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { env } from '../config/env';
 import { otpRepository } from '../repositories/otp.repository';
 import { userRepository } from '../repositories/user.repository';
+import { passwordResetTokenRepository } from '../repositories/passwordResetToken.repository';
 import { emailService } from './email.service';
 import { emitCustomerCreated } from '../socket';
 import { generateToken } from '../utils/jwt';
@@ -14,6 +15,13 @@ export class OtpService {
     return crypto
       .createHash('sha256')
       .update(`${otp}:${env.JWT_SECRET}`)
+      .digest('hex');
+  }
+
+  private hashResetToken(token: string): string {
+    return crypto
+      .createHash('sha256')
+      .update(`${token}:${env.JWT_SECRET}`)
       .digest('hex');
   }
 
@@ -313,6 +321,213 @@ export class OtpService {
       },
       token,
     };
+  }
+
+  async sendPasswordResetOtp(emailInput: string) {
+    const cleanEmail = emailInput.toLowerCase().trim();
+
+    const genericResponse = {
+      success: true,
+      message: 'If an account exists for this email, a verification code has been sent.',
+      email: cleanEmail,
+      expiresInSeconds: env.OTP_EXPIRY_MINUTES * 60,
+      cooldownSeconds: env.OTP_COOLDOWN_SECONDS,
+    };
+
+    const user = await userRepository.findByEmail(cleanEmail);
+    if (!user) {
+      // Account existence privacy: do NOT generate OTP, do NOT create record, do NOT send email
+      return genericResponse;
+    }
+
+    // Cooldown check
+    const latestOtp = await otpRepository.findLatest(cleanEmail, 'PASSWORD_RESET');
+    if (latestOtp) {
+      const elapsedSeconds = (Date.now() - new Date(latestOtp.createdAt).getTime()) / 1000;
+      if (elapsedSeconds < env.OTP_COOLDOWN_SECONDS) {
+        const remaining = Math.ceil(env.OTP_COOLDOWN_SECONDS - elapsedSeconds);
+        throw new AppError(`Please wait ${remaining} seconds before requesting a new password reset code.`, 429);
+      }
+    }
+
+    // Invalidate any pending password reset OTPs
+    await otpRepository.invalidatePending(cleanEmail, 'PASSWORD_RESET');
+
+    const rawOtp = this.generateNumericOtp(6);
+    const otpHash = this.hashOtp(rawOtp);
+    const expiresAt = new Date(Date.now() + env.OTP_EXPIRY_MINUTES * 60 * 1000);
+
+    await otpRepository.create({
+      identifier: cleanEmail,
+      otpHash,
+      purpose: 'PASSWORD_RESET',
+      expiresAt,
+      metadata: { userId: user.id, name: user.name },
+    });
+
+    // Dispatch email through SMTP (no casual plaintext console logs in production)
+    emailService.sendPasswordResetOtpEmail(cleanEmail, rawOtp, user.name).catch((err) => {
+      console.error('Failed to send password reset OTP email:', err);
+    });
+
+    return genericResponse;
+  }
+
+  async resendPasswordResetOtp(emailInput: string) {
+    const cleanEmail = emailInput.toLowerCase().trim();
+
+    const genericResponse = {
+      success: true,
+      message: 'If an account exists for this email, a verification code has been sent.',
+      email: cleanEmail,
+      expiresInSeconds: env.OTP_EXPIRY_MINUTES * 60,
+      cooldownSeconds: env.OTP_COOLDOWN_SECONDS,
+    };
+
+    const user = await userRepository.findByEmail(cleanEmail);
+    if (!user) {
+      return genericResponse;
+    }
+
+    const latestOtp = await otpRepository.findLatest(cleanEmail, 'PASSWORD_RESET');
+    if (latestOtp) {
+      const elapsedSeconds = (Date.now() - new Date(latestOtp.createdAt).getTime()) / 1000;
+      if (elapsedSeconds < env.OTP_COOLDOWN_SECONDS) {
+        const remaining = Math.ceil(env.OTP_COOLDOWN_SECONDS - elapsedSeconds);
+        throw new AppError(`Please wait ${remaining} seconds before requesting a new password reset code.`, 429);
+      }
+    }
+
+    await otpRepository.invalidatePending(cleanEmail, 'PASSWORD_RESET');
+
+    const rawOtp = this.generateNumericOtp(6);
+    const otpHash = this.hashOtp(rawOtp);
+    const expiresAt = new Date(Date.now() + env.OTP_EXPIRY_MINUTES * 60 * 1000);
+
+    await otpRepository.create({
+      identifier: cleanEmail,
+      otpHash,
+      purpose: 'PASSWORD_RESET',
+      expiresAt,
+      metadata: { userId: user.id, name: user.name },
+    });
+
+    emailService.sendPasswordResetOtpEmail(cleanEmail, rawOtp, user.name).catch((err) => {
+      console.error('Failed to send password reset OTP email:', err);
+    });
+
+    return genericResponse;
+  }
+
+  async verifyResetOtp(emailInput: string, otpInput: string) {
+    const cleanEmail = emailInput.toLowerCase().trim();
+    const cleanOtp = otpInput.trim();
+
+    const activeOtp = await otpRepository.findLatestActive(cleanEmail, 'PASSWORD_RESET');
+    if (!activeOtp) {
+      throw new AppError('This verification code has expired. Please request a new code.', 400, {
+        code: 'OTP_EXPIRED',
+      });
+    }
+
+    if (activeOtp.attempts >= env.OTP_MAX_ATTEMPTS) {
+      await otpRepository.markConsumed(activeOtp.id);
+      throw new AppError('Too many incorrect attempts. Please request a new code.', 400, {
+        code: 'OTP_MAX_ATTEMPTS',
+      });
+    }
+
+    const computedHash = this.hashOtp(cleanOtp);
+    if (computedHash !== activeOtp.otpHash) {
+      await otpRepository.incrementAttempts(activeOtp.id);
+      const currentAttempts = activeOtp.attempts + 1;
+      if (currentAttempts >= env.OTP_MAX_ATTEMPTS) {
+        await otpRepository.markConsumed(activeOtp.id);
+        throw new AppError('Too many incorrect attempts. Please request a new code.', 400, {
+          code: 'OTP_MAX_ATTEMPTS',
+        });
+      }
+      const remaining = env.OTP_MAX_ATTEMPTS - currentAttempts;
+      throw new AppError(`Incorrect verification code. ${remaining} attempt(s) remaining.`, 400, {
+        code: 'OTP_INVALID',
+        remainingAttempts: remaining,
+      });
+    }
+
+    // Mark OTP consumed
+    await otpRepository.markConsumed(activeOtp.id);
+
+    const user = await userRepository.findByEmail(cleanEmail);
+    if (!user) {
+      throw new AppError('User account not found', 404);
+    }
+
+    // Invalidate any previous active reset tokens for this user
+    await passwordResetTokenRepository.invalidateAllForUser(user.id);
+
+    // Generate single-use, cryptographically secure reset authorization
+    const rawResetToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = this.hashResetToken(rawResetToken);
+    const tokenExpiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes validity
+
+    // Store token hash in dedicated PasswordResetToken table
+    await passwordResetTokenRepository.create({
+      userId: user.id,
+      tokenHash,
+      expiresAt: tokenExpiresAt,
+    });
+
+    return {
+      success: true,
+      message: 'Verification code verified successfully. You may now reset your password.',
+      resetToken: rawResetToken,
+      email: cleanEmail,
+    };
+  }
+
+  async resetPasswordWithToken(resetTokenInput: string, newPasswordInput: string) {
+    const rawToken = resetTokenInput.trim();
+    const cleanPassword = newPasswordInput;
+
+    if (!cleanPassword || cleanPassword.length < 6) {
+      throw new AppError('Password must be at least 6 characters long.', 400);
+    }
+
+    const tokenHash = this.hashResetToken(rawToken);
+    const tokenRecord = await passwordResetTokenRepository.findActiveByTokenHash(tokenHash);
+
+    if (!tokenRecord || !tokenRecord.user) {
+      throw new AppError('Invalid, expired, or already used reset authorization. Please start over.', 400, {
+        code: 'RESET_TOKEN_INVALID',
+      });
+    }
+
+    // Hash new password using bcrypt
+    const newHash = await hashPassword(cleanPassword);
+    await userRepository.updatePassword(tokenRecord.userId, newHash);
+
+    // Invalidate reset token immediately (single-use enforcement)
+    await passwordResetTokenRepository.markUsed(tokenRecord.id);
+    await passwordResetTokenRepository.invalidateAllForUser(tokenRecord.userId);
+
+    // Invalidate any pending password reset OTPs
+    await otpRepository.invalidatePending(tokenRecord.user.email, 'PASSWORD_RESET');
+
+    // Dispatch security confirmation email
+    emailService.sendPasswordChangedNotificationEmail(tokenRecord.user.email, tokenRecord.user.name).catch((err) => {
+      console.error('Failed to send password changed notification email:', err);
+    });
+
+    return {
+      success: true,
+      message: 'Password reset successfully. Please login with your new password.',
+    };
+  }
+
+  // Backwards-compatible alias for existing direct test endpoint
+  async verifyAndResetPassword(emailInput: string, otp: string, newPassword: string) {
+    const verified = await this.verifyResetOtp(emailInput, otp);
+    return this.resetPasswordWithToken(verified.resetToken, newPassword);
   }
 }
 

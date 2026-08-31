@@ -42,23 +42,24 @@ enum OtpPurpose {
 }
 
 model User {
-  id              String            @id @default(uuid())
-  email           String            @unique
-  password        String            @default("")
-  name            String
-  role            Role              @default(CUSTOMER)
-  phone           String?
-  emailVerified   Boolean           @default(false)
-  location        String?
-  crops           String?
-  status          String            @default("Active")
-  avatarUrl       String?
-  cart            Cart?
-  orders          Order[]
-  reviews         Review[]
-  savedAddresses  ShippingAddress[]
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  id                  String               @id @default(uuid())
+  email               String               @unique
+  password            String               @default("")
+  name                String
+  role                Role                 @default(CUSTOMER)
+  phone               String?
+  emailVerified       Boolean              @default(false)
+  location            String?
+  crops               String?
+  status              String               @default("Active")
+  avatarUrl           String?
+  cart                Cart?
+  orders              Order[]
+  reviews             Review[]
+  savedAddresses      ShippingAddress[]
+  passwordResetTokens PasswordResetToken[]
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
 
   @@index([email])
   @@index([phone])
@@ -76,6 +77,20 @@ model Otp {
   createdAt  DateTime   @default(now())
 
   @@index([identifier, purpose])
+  @@index([expiresAt])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([tokenHash])
   @@index([expiresAt])
 }
 

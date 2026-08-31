@@ -48,9 +48,23 @@ export interface AuthResponse {
 export interface OtpResponse {
   success: boolean;
   message: string;
-  email: string;
+  email?: string;
   expiresInSeconds?: number;
   cooldownSeconds?: number;
+}
+
+export interface VerifyResetOtpResponse {
+  resetToken: string;
+  email: string;
+}
+
+export interface PasswordResetToken {
+  id: string;
+  userId: string;
+  tokenHash: string;
+  expiresAt: string | Date;
+  usedAt?: string | Date | null;
+  createdAt: string | Date;
 }
 
 export interface CustomerStats {

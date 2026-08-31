@@ -153,7 +153,69 @@ export class EmailService {
     return this.sendMail({ to, subject, html, text });
   }
 
-  async sendWelcomeEmail(to: string, name: string) {
+  async sendPasswordResetOtpEmail(to: string, otp: string, name: string) {
+    const subject = `🔐 ${otp} is your FarmerBench Password Reset Code`;
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #F4F7F4; margin: 0; padding: 20px; color: #1E293B; }
+          .card { max-width: 520px; margin: 0 auto; background-color: #FFFFFF; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: 1px solid #E2E8F0; }
+          .header { background: linear-gradient(135deg, #0F4726 0%, #15803D 100%); padding: 28px 24px; text-align: center; color: #FFFFFF; }
+          .header h1 { margin: 0; font-size: 24px; font-weight: 800; }
+          .header p { margin: 6px 0 0; font-size: 13px; color: #B7D9C3; }
+          .content { padding: 32px 24px; text-align: center; }
+          .greeting { font-size: 16px; font-weight: 600; color: #0F172A; margin-bottom: 12px; }
+          .desc { font-size: 14px; color: #64748B; line-height: 1.6; margin-bottom: 20px; }
+          .otp-box { display: inline-block; background-color: #FEF2F2; border: 2px dashed #DC2626; border-radius: 10px; padding: 14px 32px; font-size: 32px; font-weight: 800; color: #991B1B; letter-spacing: 6px; margin: 10px 0 20px; }
+          .validity { font-size: 12px; color: #DC2626; font-weight: 600; margin-bottom: 20px; }
+          .footer { background-color: #F8FAFC; border-top: 1px solid #E2E8F0; padding: 16px; text-align: center; font-size: 11px; color: #94A3B8; }
+        </style>
+      </head>
+      <body>
+        <div class="card">
+          <div class="header">
+            <h1>FarmerBench</h1>
+            <p>Password Reset Request</p>
+          </div>
+          <div class="content">
+            <div class="greeting">Hello ${name || 'Farmer'},</div>
+            <div class="desc">We received a request to reset your FarmerBench account password. Please use the verification code below to set your new password:</div>
+            <div class="otp-box">${otp}</div>
+            <div class="validity">⏳ This code expires in 5 minutes. Do not share it with anyone.</div>
+            <p style="font-size: 13px; color: #64748B;">If you did not request a password reset, you can safely ignore this email.</p>
+          </div>
+          <div class="footer">
+            © ${new Date().getFullYear()} FarmerBench. All rights reserved.
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const text = `Hello ${name}!\n\nYour FarmerBench password reset code is: ${otp}\n\nExpires in 5 minutes.`;
+    return this.sendMail({ to, subject, html, text });
+  }
+
+  async sendPasswordChangedNotificationEmail(to: string, name: string) {
+    const subject = `🔒 Your FarmerBench Password Has Been Changed`;
+    const html = `
+      <div style="font-family: sans-serif; max-width: 500px; margin: auto; padding: 24px; border: 1px solid #E2E8F0; border-radius: 12px; background-color: #FFFFFF;">
+        <h2 style="color: #0F4726; margin-top: 0;">Password Changed Successfully</h2>
+        <p>Dear ${name || 'Farmer'},</p>
+        <p>Your FarmerBench account password was successfully updated on <strong>${new Date().toLocaleString()}</strong>.</p>
+        <p>If you made this change, no further action is needed.</p>
+        <p style="color: #DC2626; font-size: 13px;">If you did NOT perform this action, please contact our support immediately.</p>
+        <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 20px 0;" />
+        <p style="font-size: 12px; color: #94A3B8;">FarmerBench Security Team</p>
+      </div>
+    `;
+    return this.sendMail({ to, subject, html, text: `Your FarmerBench password was changed successfully.` });
+  }
+
+  sendWelcomeEmail(to: string, name: string) {
     const subject = `🌱 Welcome to FarmerBench, ${name}!`;
     const html = `
       <div style="font-family: sans-serif; max-width: 500px; margin: auto; padding: 20px; border: 1px solid #E2E8F0; border-radius: 12px;">

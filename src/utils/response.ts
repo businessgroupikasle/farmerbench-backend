@@ -45,11 +45,14 @@ export const sendError = (
   res: Response,
   message: string = 'Internal Server Error',
   statusCode: number = 500,
-  error?: any
+  error?: any,
+  code?: string
 ) => {
-  const response: ApiResponse = {
+  const errCode = code || (typeof error === 'object' && error !== null ? error.code : undefined);
+  const response: any = {
     success: false,
     message,
+    ...(errCode ? { code: errCode } : {}),
     error,
   };
   return res.status(statusCode).json(response);
