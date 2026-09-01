@@ -18,6 +18,7 @@ export class OrderRepository {
     totalPrice: number;
   }) {
     return prisma.$transaction(async (tx) => {
+      const isRazorpay = data.paymentMethod === 'RAZORPAY';
       // 1. Create Shipping Address
       const shippingAddress = await tx.shippingAddress.create({
         data: {
@@ -38,8 +39,8 @@ export class OrderRepository {
           userId,
           shippingAddressId: shippingAddress.id,
           paymentMethod: data.paymentMethod,
-          paymentStatus: 'PAID', // In mock/live checkout
-          orderStatus: 'PROCESSING',
+          paymentStatus: 'PENDING',
+          orderStatus: isRazorpay ? 'PENDING' : 'PROCESSING',
           itemsPrice: data.itemsPrice,
           taxPrice: data.taxPrice,
           shippingPrice: data.shippingPrice,
@@ -57,7 +58,7 @@ export class OrderRepository {
             create: {
               amount: data.totalPrice,
               method: data.paymentMethod,
-              status: 'PAID',
+              status: 'PENDING',
               transactionId: `TXN-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
             },
           },
@@ -74,16 +75,14 @@ export class OrderRepository {
         },
       });
 
-      // 3. Update stock levels for each item
-      for (const item of data.items) {
-        await tx.product.update({
-          where: { id: item.productId },
-          data: {
-            stock: {
-              decrement: item.quantity,
-            },
-          },
-        });
+      // Razorpay stock is committed only after verified payment.
+      if (!isRazorpay) {
+        for (const item of data.items) {
+          await tx.product.update({
+            where: { id: item.productId },
+            data: { stock: { decrement: item.quantity } },
+          });
+        }
       }
 
       return order;
@@ -108,7 +107,13 @@ export class OrderRepository {
 
   async findByUserId(userId: string) {
     return prisma.order.findMany({
-      where: { userId },
+      where: {
+        userId,
+        OR: [
+          { paymentMethod: { not: 'RAZORPAY' } },
+          { paymentStatus: 'PAID' },
+        ],
+      },
       include: {
         items: {
           include: { product: true },

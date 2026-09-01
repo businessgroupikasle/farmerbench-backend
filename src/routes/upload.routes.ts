@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { uploadImage } from '../middlewares/upload.middleware';
+import { uploadImage, ALLOWED_UPLOAD_FOLDERS } from '../middlewares/upload.middleware';
 import { sendSuccess, AppError } from '../utils/response';
 
 const router = Router();
@@ -14,7 +14,9 @@ router.post('/image', (req: Request, res: Response, next: NextFunction) => {
       return next(new AppError('No image file provided in form-data field "file"', 400));
     }
 
-    const fileUrl = `/uploads/${req.file.filename}`;
+    const folderParam = typeof req.query?.folder === 'string' ? req.query.folder.trim() : '';
+    const safeSub = folderParam ? ALLOWED_UPLOAD_FOLDERS[folderParam] : undefined;
+    const fileUrl = safeSub ? `/uploads/${safeSub}/${req.file.filename}` : `/uploads/${req.file.filename}`;
 
     return sendSuccess(
       res,
@@ -32,3 +34,4 @@ router.post('/image', (req: Request, res: Response, next: NextFunction) => {
 });
 
 export default router;
+

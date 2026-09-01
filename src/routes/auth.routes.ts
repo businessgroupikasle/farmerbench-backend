@@ -10,6 +10,7 @@ import {
   ChangePasswordSchema,
   RegisterOtpSchema,
   VerifyRegisterOtpSchema,
+  CompleteRegistrationSchema,
   ResendOtpSchema,
   LoginOtpSchema,
   VerifyLoginOtpSchema,
@@ -28,6 +29,7 @@ router.post('/login', authRateLimiter, validateBody(LoginSchema), authController
 // OTP-Driven Auth
 router.post('/register-otp', validateBody(RegisterOtpSchema), authController.registerOtp);
 router.post('/verify-register-otp', validateBody(VerifyRegisterOtpSchema), authController.verifyRegisterOtp);
+router.post('/complete-registration', validateBody(CompleteRegistrationSchema), authController.completeRegistration);
 router.post('/resend-register-otp', validateBody(ResendOtpSchema), authController.resendOtp);
 router.post('/login-otp', authRateLimiter, validateBody(LoginOtpSchema), authController.loginOtp);
 router.post('/verify-login-otp', otpVerifyRateLimiter, validateBody(VerifyLoginOtpSchema), authController.verifyLoginOtp);
@@ -49,4 +51,3 @@ router.post('/forgot-password-otp', authRateLimiter, authController.forgotPasswo
 router.post('/verify-reset-password-otp', authRateLimiter, authController.verifyResetPasswordOtp);
 
 export default router;
-

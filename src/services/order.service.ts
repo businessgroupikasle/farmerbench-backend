@@ -58,8 +58,8 @@ export class OrderService {
     const itemsPrice = Number(
       orderItemsToCreate.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2)
     );
-    const shippingPrice = itemsPrice >= 100 ? 0 : 15; // Free shipping over $100
-    const taxPrice = Number((itemsPrice * 0.08).toFixed(2)); // 8% sales tax
+    const shippingPrice = itemsPrice >= 999 ? 0 : 80;
+    const taxPrice = 0; // Displayed product prices are GST-inclusive.
     const totalPrice = Number((itemsPrice + shippingPrice + taxPrice).toFixed(2));
 
     const order = await orderRepository.create(userId, {
@@ -72,8 +72,10 @@ export class OrderService {
       totalPrice,
     });
 
-    // Clear cart after successful checkout
-    await cartRepository.clearCart(userId);
+    // Online-payment carts are cleared only after payment verification.
+    if (input.paymentMethod !== 'RAZORPAY') {
+      await cartRepository.clearCart(userId);
+    }
 
     return order;
   }

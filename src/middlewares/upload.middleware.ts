@@ -9,14 +9,37 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
+// Predefined safe subfolder destinations
+export const ALLOWED_UPLOAD_FOLDERS: Record<string, string> = {
+  'products/gallery': 'products/gallery',
+  'products': 'products',
+  'categories': 'categories',
+  'avatars': 'avatars',
+};
+
 const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
+  destination: (req, _file, cb) => {
+    const folderParam = typeof req.query?.folder === 'string' ? req.query.folder.trim() : '';
+    if (folderParam) {
+      const allowedSub = ALLOWED_UPLOAD_FOLDERS[folderParam];
+      if (!allowedSub) {
+        return cb(new AppError(`Invalid upload folder "${folderParam}". Allowed: ${Object.keys(ALLOWED_UPLOAD_FOLDERS).join(', ')}`, 400) as any, '');
+      }
+      const targetDir = path.resolve(uploadsDir, allowedSub);
+      if (!fs.existsSync(targetDir)) {
+        fs.mkdirSync(targetDir, { recursive: true });
+      }
+      return cb(null, targetDir);
+    }
+    // Default fallback: root uploads/ directory (100% backward compatible)
     cb(null, uploadsDir);
   },
   filename: (_req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
-    const uniqueName = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}${ext}`;
-    cb(null, uniqueName);
+    const baseName = path.basename(file.originalname, ext).replace(/[^a-zA-Z0-9_-]/g, '-').toLowerCase().slice(0, 40);
+    const uniqueSuffix = `${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+    const finalFilename = baseName ? `${baseName}-${uniqueSuffix}${ext}` : `${uniqueSuffix}${ext}`;
+    cb(null, finalFilename);
   },
 });
 
@@ -36,3 +59,4 @@ export const uploadImage = multer({
     fileSize: 10 * 1024 * 1024, // 10 MB maximum
   },
 });
+

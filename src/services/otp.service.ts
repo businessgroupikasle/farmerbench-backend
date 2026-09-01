@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import jwt from 'jsonwebtoken';
 import { env } from '../config/env';
 import { otpRepository } from '../repositories/otp.repository';
 import { userRepository } from '../repositories/user.repository';
@@ -8,7 +9,7 @@ import { emitCustomerCreated } from '../socket';
 import { generateToken } from '../utils/jwt';
 import { hashPassword } from '../utils/password';
 import { AppError } from '../utils/response';
-import { RegisterOtpInput, OtpPurpose } from '@formerbench/shared';
+import { CompleteRegistrationInput, RegisterOtpInput, OtpPurpose } from '@formerbench/shared';
 
 export class OtpService {
   private hashOtp(otp: string): string {
@@ -58,13 +59,7 @@ export class OtpService {
     const otpHash = this.hashOtp(rawOtp);
     const expiresAt = new Date(Date.now() + env.OTP_EXPIRY_MINUTES * 60 * 1000);
 
-    // Hash password if provided
-    let passwordHash = '';
-    if (input.password) {
-      passwordHash = await hashPassword(input.password);
-    }
-
-    // Save OTP record with registration metadata
+    // Store only display metadata. Account details are accepted after OTP verification.
     await otpRepository.create({
       identifier: email,
       otpHash,
@@ -72,10 +67,6 @@ export class OtpService {
       expiresAt,
       metadata: {
         name: input.name,
-        phone: input.phone || null,
-        location: input.location || null,
-        crops: input.crops || null,
-        passwordHash,
       },
     });
 
@@ -99,17 +90,7 @@ export class OtpService {
     };
   }
 
-  async verifyRegistrationOtp(
-    email: string,
-    otp: string,
-    extraData?: {
-      name?: string;
-      phone?: string | null;
-      location?: string | null;
-      crops?: string | null;
-      password?: string;
-    }
-  ) {
+  async verifyRegistrationOtp(email: string, otp: string) {
     const cleanEmail = email.toLowerCase().trim();
     const cleanOtp = otp.trim();
 
@@ -133,47 +114,50 @@ export class OtpService {
     // Mark OTP consumed
     await otpRepository.markConsumed(activeOtp.id);
 
-    // Extract metadata
-    const meta = (activeOtp.metadata as any) || {};
-    const effectiveName = extraData?.name || meta.name || cleanEmail.split('@')[0];
-    const effectivePhone = extraData?.phone ?? meta.phone ?? null;
-    const effectiveLocation = extraData?.location ?? meta.location ?? 'Tamil Nadu';
-    const effectiveCrops = extraData?.crops ?? meta.crops ?? 'Paddy / General Crops';
+    const registrationToken = jwt.sign(
+      { email: cleanEmail, purpose: 'REGISTRATION_COMPLETION' },
+      env.JWT_SECRET,
+      { expiresIn: '15m' }
+    );
 
-    let finalPasswordHash = meta.passwordHash || '';
-    if (extraData?.password && extraData.password.length >= 6) {
-      finalPasswordHash = await hashPassword(extraData.password);
+    return {
+      email: cleanEmail,
+      emailVerified: true,
+      registrationToken,
+      expiresInSeconds: 15 * 60,
+    };
+  }
+
+  async completeRegistration(input: CompleteRegistrationInput) {
+    let tokenPayload: jwt.JwtPayload;
+    try {
+      tokenPayload = jwt.verify(input.registrationToken, env.JWT_SECRET) as jwt.JwtPayload;
+    } catch {
+      throw new AppError('Registration session has expired. Please verify your email again.', 400);
     }
 
-    // Check if user already exists (unverified) or create new user
-    const existingUser = await userRepository.findByEmail(cleanEmail);
-    let finalUser;
+    if (tokenPayload.purpose !== 'REGISTRATION_COMPLETION' || typeof tokenPayload.email !== 'string') {
+      throw new AppError('Invalid registration session. Please verify your email again.', 400);
+    }
 
+    const email = tokenPayload.email.toLowerCase().trim();
+    const existingUser = await userRepository.findByEmail(email);
     if (existingUser) {
-      finalUser = await userRepository.update(existingUser.id, {
-        name: effectiveName,
-        phone: effectivePhone,
-        location: effectiveLocation,
-        crops: effectiveCrops,
-        emailVerified: true,
-        status: 'Active',
-      });
-      if (finalPasswordHash) {
-        await userRepository.updatePassword(existingUser.id, finalPasswordHash);
-      }
-    } else {
-      finalUser = await userRepository.create({
-        email: cleanEmail,
-        name: effectiveName,
-        password: finalPasswordHash,
-        phone: effectivePhone,
-        location: effectiveLocation,
-        crops: effectiveCrops,
-        emailVerified: true,
-        status: 'Active',
-        role: 'CUSTOMER',
-      });
+      throw new AppError('An account with this email already exists. Please sign in.', 400);
     }
+
+    const passwordHash = await hashPassword(input.password);
+    const finalUser = await userRepository.create({
+      email,
+      name: input.name.trim(),
+      password: passwordHash,
+      phone: input.phone.trim(),
+      location: input.location.trim(),
+      crops: input.crops?.trim() || null,
+      emailVerified: true,
+      status: 'Active',
+      role: 'CUSTOMER',
+    });
 
     // Emit real-time Socket.IO event for admin dashboard
     emitCustomerCreated({
@@ -336,7 +320,13 @@ export class OtpService {
 
     const user = await userRepository.findByEmail(cleanEmail);
     if (!user) {
-      // Account existence privacy: do NOT generate OTP, do NOT create record, do NOT send email
+      if (env.NODE_ENV !== 'production') {
+        throw new AppError(
+          'No completed account exists for this email. Please finish sign up before resetting the password.',
+          404
+        );
+      }
+      // Preserve account-existence privacy in production.
       return genericResponse;
     }
 
@@ -365,12 +355,12 @@ export class OtpService {
       metadata: { userId: user.id, name: user.name },
     });
 
-    // Dispatch email through SMTP (no casual plaintext console logs in production)
-    emailService.sendPasswordResetOtpEmail(cleanEmail, rawOtp, user.name).catch((err) => {
-      console.error('Failed to send password reset OTP email:', err);
-    });
+    // Await delivery so the API never reports success when SMTP actually failed.
+    await emailService.sendPasswordResetOtpEmail(cleanEmail, rawOtp, user.name);
 
-    return genericResponse;
+    return env.NODE_ENV === 'production'
+      ? genericResponse
+      : { ...genericResponse, message: `Password reset code sent successfully to ${cleanEmail}.` };
   }
 
   async resendPasswordResetOtp(emailInput: string) {
@@ -386,6 +376,12 @@ export class OtpService {
 
     const user = await userRepository.findByEmail(cleanEmail);
     if (!user) {
+      if (env.NODE_ENV !== 'production') {
+        throw new AppError(
+          'No completed account exists for this email. Please finish sign up before requesting another code.',
+          404
+        );
+      }
       return genericResponse;
     }
 
@@ -412,11 +408,11 @@ export class OtpService {
       metadata: { userId: user.id, name: user.name },
     });
 
-    emailService.sendPasswordResetOtpEmail(cleanEmail, rawOtp, user.name).catch((err) => {
-      console.error('Failed to send password reset OTP email:', err);
-    });
+    await emailService.sendPasswordResetOtpEmail(cleanEmail, rawOtp, user.name);
 
-    return genericResponse;
+    return env.NODE_ENV === 'production'
+      ? genericResponse
+      : { ...genericResponse, message: `A new password reset code was sent successfully to ${cleanEmail}.` };
   }
 
   async verifyResetOtp(emailInput: string, otpInput: string) {

@@ -33,15 +33,18 @@ export class AuthController {
 
   async verifyRegisterOtp(req: Request, res: Response, next: NextFunction) {
     try {
-      const { email, otp, name, phone, location, crops, password } = req.body;
-      const result = await otpService.verifyRegistrationOtp(email, otp, {
-        name,
-        phone,
-        location,
-        crops,
-        password,
-      });
-      return sendSuccess(res, result, 'Account verified and registration complete!', 201);
+      const { email, otp } = req.body;
+      const result = await otpService.verifyRegistrationOtp(email, otp);
+      return sendSuccess(res, result, 'Email verified. Complete your details to create the account.');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async completeRegistration(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await otpService.completeRegistration(req.body);
+      return sendSuccess(res, result, 'Account created successfully!', 201);
     } catch (error) {
       next(error);
     }
@@ -191,4 +194,3 @@ export class AuthController {
 }
 
 export const authController = new AuthController();
-

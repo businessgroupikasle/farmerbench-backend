@@ -1,5 +1,22 @@
 import { z } from 'zod';
 
+const IndianMobileSchema = z
+  .string()
+  .trim()
+  .transform((value) => value.replace(/[\s()-]/g, ''))
+  .refine(
+    (value) => /^(?:\+91|91)?[6-9]\d{9}$/.test(value),
+    'Enter a valid 10-digit Indian mobile number'
+  )
+  .transform((value) => {
+    const nationalNumber = value.startsWith('+91')
+      ? value.slice(3)
+      : value.length === 12 && value.startsWith('91')
+        ? value.slice(2)
+        : value;
+    return `+91${nationalNumber}`;
+  });
+
 // ============================================================================
 // AUTH SCHEMAS
 // ============================================================================
@@ -8,7 +25,7 @@ export const RegisterSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   name: z.string().min(2, 'Name must be at least 2 characters'),
-  phone: z.string().optional().nullable(),
+  phone: IndianMobileSchema.optional().nullable(),
   location: z.string().optional().nullable(),
   crops: z.string().optional().nullable(),
 });
@@ -21,7 +38,7 @@ export const LoginSchema = z.object({
 export const RegisterOtpSchema = z.object({
   email: z.string().email('Invalid email address'),
   name: z.string().min(2, 'Name must be at least 2 characters').optional(),
-  phone: z.string().optional().nullable(),
+  phone: IndianMobileSchema.optional().nullable(),
   location: z.string().optional().nullable(),
   crops: z.string().optional().nullable(),
   password: z.string().min(6, 'Password must be at least 6 characters').optional(),
@@ -30,11 +47,15 @@ export const RegisterOtpSchema = z.object({
 export const VerifyRegisterOtpSchema = z.object({
   email: z.string().email('Invalid email address'),
   otp: z.string().length(6, 'OTP must be 6 digits'),
-  name: z.string().optional(),
-  phone: z.string().optional().nullable(),
-  location: z.string().optional().nullable(),
+});
+
+export const CompleteRegistrationSchema = z.object({
+  registrationToken: z.string().min(1, 'Registration token is required'),
+  name: z.string().min(2, 'Name must be at least 2 characters'),
+  phone: IndianMobileSchema,
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+  location: z.string().min(2, 'Location is required'),
   crops: z.string().optional().nullable(),
-  password: z.string().optional(),
 });
 
 export const ResendOtpSchema = z.object({
@@ -53,7 +74,7 @@ export const VerifyLoginOtpSchema = z.object({
 
 export const UpdateProfileSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').optional(),
-  phone: z.string().optional().nullable(),
+  phone: IndianMobileSchema.optional().nullable(),
   location: z.string().optional().nullable(),
   crops: z.string().optional().nullable(),
   avatarUrl: z.string().url('Invalid avatar URL').optional().nullable(),
@@ -185,7 +206,7 @@ export const ShippingAddressSchema = z.object({
   state: z.string().min(2, 'State is required'),
   postalCode: z.string().min(4, 'Postal code is required'),
   country: z.string().min(2, 'Country is required'),
-  phone: z.string().min(8, 'Valid phone number is required'),
+  phone: IndianMobileSchema,
 });
 
 export const CreateOrderSchema = z.object({
@@ -237,6 +258,7 @@ export type RegisterInput = z.infer<typeof RegisterSchema>;
 export type LoginInput = z.infer<typeof LoginSchema>;
 export type RegisterOtpInput = z.infer<typeof RegisterOtpSchema>;
 export type VerifyRegisterOtpInput = z.infer<typeof VerifyRegisterOtpSchema>;
+export type CompleteRegistrationInput = z.infer<typeof CompleteRegistrationSchema>;
 export type ResendOtpInput = z.infer<typeof ResendOtpSchema>;
 export type LoginOtpInput = z.infer<typeof LoginOtpSchema>;
 export type VerifyLoginOtpInput = z.infer<typeof VerifyLoginOtpSchema>;
