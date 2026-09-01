@@ -1,4 +1,4 @@
-﻿import { PrismaClient, Role } from '@prisma/client';
+import { PrismaClient, Role } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -21,7 +21,7 @@ async function main() {
 
   console.log('🧹 Cleaned existing database records.');
 
-  // 2. Create Default Users (Super Admin + Authentic Farmers)
+  // 2. Create Super Admin User Only
   const defaultPassword = await bcrypt.hash('DemoPass123!', 10);
 
   const admin = await prisma.user.create({
@@ -39,104 +39,7 @@ async function main() {
     },
   });
 
-  const farmersData = [
-    {
-      email: 'customer@formerbench.dev',
-      name: 'Ramanathan K.',
-      phone: '+91 98421 88321',
-      location: 'Thanjavur, Tamil Nadu',
-      crops: 'Paddy / 15 Acres',
-      status: 'Verified',
-      avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-    },
-    {
-      email: 'meena.devi@farmmail.in',
-      name: 'Meena Devi',
-      phone: '+91 97892 44102',
-      location: 'Erode, Tamil Nadu',
-      crops: 'Tomato & Vegetables / 6 Acres',
-      status: 'Verified',
-      avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
-    },
-    {
-      email: 'murugan.agro@gmail.com',
-      name: 'Muruganandam K.',
-      phone: '+91 94432 10842',
-      location: 'Erode (Delta Region)',
-      crops: 'Turmeric & Coconut / 8 Acres',
-      status: 'Verified',
-      avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
-    },
-    {
-      email: 'gopal.crops@gmail.com',
-      name: 'Gopalakrishnan V.',
-      phone: '+91 97890 33412',
-      location: 'Madurai, Tamil Nadu',
-      crops: 'Cotton & Chillies / 5 Acres',
-      status: 'Verified',
-      avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
-    },
-    {
-      email: 'annamalai.farm@gmail.com',
-      name: 'Annamalai R.',
-      phone: '+91 98402 77112',
-      location: 'Tirunelveli, Tamil Nadu',
-      crops: 'Banana & Paddy / 15 Acres',
-      status: 'Verified',
-      avatarUrl: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80',
-    },
-    {
-      email: 'meenakshi.agro@gmail.com',
-      name: 'Meenakshi Sundaram',
-      phone: '+91 99441 55230',
-      location: 'Dindigul, Tamil Nadu',
-      crops: 'Vegetables & Maize / 6 Acres',
-      status: 'Verified',
-      avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
-    },
-    {
-      email: 'kavitha.agro@gmail.com',
-      name: 'Kavitha Selvam',
-      phone: '+91 98940 12099',
-      location: 'Coimbatore, Tamil Nadu',
-      crops: 'Arecanut & Coconut / 10 Acres',
-      status: 'Verified',
-      avatarUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80',
-    },
-    {
-      email: 'senthil.farmer@gmail.com',
-      name: 'Senthil Nathan',
-      phone: '+91 98421 99210',
-      location: 'Salem, Tamil Nadu',
-      crops: 'Tapioca & Pulses / 8 Acres',
-      status: 'Verified',
-      avatarUrl: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80',
-    },
-  ];
-
-  const seededFarmers = [];
-  for (const f of farmersData) {
-    const user = await prisma.user.create({
-      data: {
-        email: f.email,
-        name: f.name,
-        password: defaultPassword,
-        role: Role.CUSTOMER,
-        phone: f.phone,
-        emailVerified: true,
-        location: f.location,
-        crops: f.crops,
-        status: f.status,
-        avatarUrl: f.avatarUrl,
-      },
-    });
-    seededFarmers.push(user);
-  }
-
-  const customer1 = seededFarmers[0];
-  const customer2 = seededFarmers[1];
-
-  console.log(`?? Created ${seededFarmers.length + 1} users in PostgreSQL (Super Admin + Farmers).`);
+  console.log('👑 Created Super Admin (admin@formerbench.dev).');
 
   // 3. Create Authentic FarmerBench Categories
   const categories = await Promise.all([
@@ -144,158 +47,133 @@ async function main() {
       data: {
         name: 'Bio Stimulants',
         slug: 'bio-stimulants',
-        description: 'Plant growth promoters, root energizers, seaweed extracts, and flowering catalysts.',
+        description: 'Plant growth activators, microbial extracts, and botanical bio-stimulants.',
         imageUrl: 'https://images.unsplash.com/photo-1574943320219-553eb213f72d?w=800&auto=format&fit=crop&q=80',
+      },
+    }),
+    prisma.category.create({
+      data: {
+        name: 'Bio Fertilizers',
+        slug: 'bio-fertilizers',
+        description: '100% natural organic humic conditioners, amino acids, and micronutrients.',
+        imageUrl: 'https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=800&auto=format&fit=crop&q=80',
       },
     }),
     prisma.category.create({
       data: {
         name: 'Bio Pesticides',
         slug: 'bio-pesticides',
-        description: 'Neem oils, trichoderma bio-fungicides, and organic biological pest protection.',
-        imageUrl: 'https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?w=800&auto=format&fit=crop&q=80',
-      },
-    }),
-    prisma.category.create({
-      data: {
-        name: 'Fertilizers',
-        slug: 'fertilizers',
-        description: 'Humic power soil conditioners, vermicompost extracts, and organic mineral nutrition.',
-        imageUrl: 'https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=800&auto=format&fit=crop&q=80',
+        description: 'Cold-pressed botanical neem oils and beneficial biological disease shields.',
+        imageUrl: 'https://images.unsplash.com/photo-1592417817098-8f3d69109853?w=800&auto=format&fit=crop&q=80',
       },
     }),
     prisma.category.create({
       data: {
         name: 'Crop Nutrition',
         slug: 'crop-nutrition',
-        description: 'Micronutrient blends, chelated zinc, boron, and calcium foliar sprays.',
+        description: 'Chelated multi-micronutrients, seaweed marine minerals, and soil revitalizers.',
         imageUrl: 'https://images.unsplash.com/photo-1530507629858-e4977d30e9e0?w=800&auto=format&fit=crop&q=80',
       },
     }),
     prisma.category.create({
       data: {
-        name: 'Seeds & Seedlings',
-        slug: 'seeds-seedlings',
-        description: 'High-germination certified hybrid seeds, paddy grains, and organic produce seeds.',
+        name: 'Seeds',
+        slug: 'seeds',
+        description: 'High-viability foundation paddy, pulses, and organic vegetable seed stocks.',
         imageUrl: 'https://images.unsplash.com/photo-1536657464919-892534f60d6e?w=800&auto=format&fit=crop&q=80',
       },
     }),
     prisma.category.create({
       data: {
-        name: 'Organic Produce',
-        slug: 'organic-produce',
-        description: 'Fresh farm-harvested organic grains, pulses, fruits, and cold-pressed oils.',
-        imageUrl: 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=800&auto=format&fit=crop&q=80',
+        name: 'Tools & Equipment',
+        slug: 'tools-equipment',
+        description: 'Agricultural sprayers, soil testing kits, and smart irrigation instruments.',
+        imageUrl: 'https://images.unsplash.com/photo-1589923188900-85dae523342b?w=800&auto=format&fit=crop&q=80',
       },
     }),
   ]);
 
-  const [bioStimulants, bioPesticides, fertilizers, cropNutrition, seeds, organicProduce] = categories;
-
+  const [bioStimulants, fertilizers, bioPesticides, cropNutrition, seeds, tools] = categories;
   console.log(`📦 Seeded ${categories.length} agricultural categories.`);
 
-  // 4. Create 8 Authentic FarmerBench Products with Full Admin CMS Attributes
+  // 4. Create Authentic FarmerBench Agricultural Products
   const products = [
     {
       title: 'Growth Booster for All Crops 500ml',
-      slug: 'growth-booster-for-all-crops',
-      description: 'Growth Booster is a 100% organic plant nutrition formula designed to promote vigorous growth, better root development and higher yields. It is enriched with essential amino acids, trace minerals, and natural phytohormones that improve soil health and boost plant immunity naturally.',
-      price: 650.0,
-      discountPrice: 580.0,
-      stock: 42,
-      rating: 4.8,
-      numReviews: 124,
+      slug: 'growth-booster-all-crops',
+      description: 'Advanced organic botanical bio-stimulant engineered with bio-fermented seaweed extract and fulvic amino acids. Accelerates tillering, branching, and fruit-set while building stress resistance against heat and drought.',
+      price: 580.0,
+      discountPrice: 499.0,
+      stock: 45,
+      rating: 4.9,
+      numReviews: 48,
       featured: true,
-      categoryId: cropNutrition.id,
+      categoryId: bioStimulants.id,
       images: [
         'https://images.unsplash.com/photo-1574943320219-553eb213f72d?w=800&auto=format&fit=crop&q=80',
-        'https://images.unsplash.com/photo-1592417817098-8f3d69109853?w=800&auto=format&fit=crop&q=80',
-        'https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?w=800&auto=format&fit=crop&q=80',
-        'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?w=800&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=800&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1530507629858-e4977d30e9e0?w=800&auto=format&fit=crop&q=80',
       ],
       attributes: {
         features: [
-          'Promotes faster and healthier growth',
-          'Improves flowering and crop yield',
-          'Supports stronger root development',
-          'Suitable for all major crops',
+          'Cold Fermented Seaweed & Amino Acid Matrix',
+          'Accelerates root elongation and vegetative branching',
+          'Enhances flower retention and uniform fruit-setting',
+          'Builds climate resilience against drought & heat waves',
         ],
-        packSizes: ['500 g', '1 kg', '5 kg'],
+        packSizes: ['250 ml', '500 ml', '1 L', '5 L'],
         benefits: [
-          'Accelerates vegetative nodal branching and healthy canopy development.',
-          'Dramatically enhances lateral feeder roots for maximum moisture and phosphorus absorption.',
-          'Increases tillering in paddy and prevents flower and fruit drop in vegetables and cotton.',
-          'Builds natural resistance against climatic stress and intermittent drought.',
+          'Enhances chlorophyll synthesis and photosynthesis rate.',
+          'Increases total crop yield by 20% to 35%.',
+          'Certified 100% organic and residue-free for export crops.',
         ],
         usageSteps: [
-          {
-            stepNumber: 1,
-            title: 'Measure',
-            description: 'Take the recommended amount as per dosage.',
-          },
-          {
-            stepNumber: 2,
-            title: 'Mix',
-            description: 'Mix with water thoroughly until dissolved.',
-          },
-          {
-            stepNumber: 3,
-            title: 'Apply',
-            description: 'Apply to soil or as foliar spray to plants.',
-          },
+          { stepNumber: 1, title: 'Measure', description: 'Take 2.5 ml of Growth Booster per Litre of clean water.' },
+          { stepNumber: 2, title: 'Mix', description: 'Shake thoroughly until completely dissolved in spray tank.' },
+          { stepNumber: 3, title: 'Foliar Spray', description: 'Spray during early morning or late evening for optimum absorption.' },
         ],
         dosageTable: [
-          { crop: 'Paddy & Cereals', foliarSpray: '2.5 ml / Litre', dripIrrigation: '500 ml / Acre' },
-          { crop: 'Cotton & Sugarcane', foliarSpray: '3.0 ml / Litre', dripIrrigation: '750 ml / Acre' },
-          { crop: 'Vegetables & Pulses', foliarSpray: '2.0 ml / Litre', dripIrrigation: '500 ml / Acre' },
-          { crop: 'Horticulture & Fruits', foliarSpray: '3.5 ml / Litre', dripIrrigation: '1000 ml / Acre' },
+          { crop: 'Paddy / Rice', foliarSpray: '2.5 ml / Litre', dripIrrigation: '500 ml / Acre' },
+          { crop: 'Vegetables & Chillies', foliarSpray: '2.0 ml / Litre', dripIrrigation: '500 ml / Acre' },
+          { crop: 'Fruit Orchards (Mango, Banana)', foliarSpray: '3.0 ml / Litre', dripIrrigation: '1 L / Acre' },
+          { crop: 'Cotton & Pulses', foliarSpray: '2.5 ml / Litre', dripIrrigation: '750 ml / Acre' },
         ],
-        ingredients: 'Cold-fermented seaweed extract (28%), hydrolysed vegetable proteins (14%), humic and fulvic acids (18%), micronutrient chelates (5%), organic carrier solvent Q.S.',
+        ingredients: 'Cold-fermented Ascophyllum Nodosum (25%), Fulvic Peptides (12%), Plant L-Amino Acids (15%), Soluble K2O (5%).',
         specifications: [
-          { label: 'Product Type', value: 'Organic' },
-          { label: 'Form', value: 'Granular' },
-          { label: 'Suitable Crops', value: 'All Crops' },
-          { label: 'Application Method', value: 'Soil Application / Foliar Spray' },
+          { label: 'Product Type', value: 'Botanical Bio-Stimulant' },
+          { label: 'Form', value: 'Liquid Concentrate' },
+          { label: 'Suitable Crops', value: 'All Agricultural & Horticultural Crops' },
+          { label: 'Application Method', value: 'Foliar Spray / Drip Fertigation' },
           { label: 'Shelf Life', value: '24 Months' },
-          { label: 'Manufacturer', value: 'Greenla Agri Solutions' },
+          { label: 'Manufacturer', value: 'FarmerBench Bio Solutions Pvt Ltd' },
         ],
         faqs: [
-          {
-            question: 'Can I use this product in drip irrigation systems?',
-            answer: 'Yes, it is 100% water-soluble and does not clog emitters, filters, or micro-tubes.',
-          },
-          {
-            question: 'Is this safe for organic certification?',
-            answer: 'Yes, it is formulated in compliance with NPOP and certified organic standards.',
-          },
-          {
-            question: 'Can it be mixed with other bio-pesticides?',
-            answer: 'Yes, it is compatible with all organic formulations and neem extracts.',
-          },
+          { question: 'Can I mix Growth Booster with chemical fertilizers?', answer: 'Yes, it is compatible with most standard water-soluble fertilizers.' },
+          { question: 'What is the optimal frequency of spray?', answer: 'Spray every 15-20 days during vegetative, flowering, and fruit-setting stages.' },
         ],
         beforeAfter: {
           beforeImage: 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=800&auto=format&fit=crop&q=80',
           afterImage: 'https://images.unsplash.com/photo-1530507629858-e4977d30e9e0?w=800&auto=format&fit=crop&q=80',
-          beforeTag: 'Before',
-          afterTag: 'After 30 Days',
-          disclaimer: '*Results may vary depending on crop type, soil condition and farming practices.',
+          beforeTag: 'Before Application (Day 0)',
+          afterTag: 'After 3 Weeks (Day 21)',
+          disclaimer: '*Results observed on paddy crop under standard agronomic practices in Thanjavur.',
         },
       },
     },
     {
-      title: 'Neem Oil 100% Cold-Pressed 1L',
-      slug: 'neem-oil-cold-pressed-1l',
-      description: 'Pure, organic cold-pressed Azadirachtin (10,000 PPM) bio-pesticide. Provides broad-spectrum control against aphids, whiteflies, thrips, caterpillars, mealybugs, and mites without harming beneficial pollinators.',
-      price: 520.0,
-      discountPrice: 460.0,
+      title: 'Neem Oil 100% Cold Pressed 1L',
+      slug: 'neem-oil-cold-pressed',
+      description: 'High-purity botanical bio-pesticide cold-pressed from selected Azadirachta indica seeds with 10,000 PPM Azadirachtin. Provides broad-spectrum natural protection against chewing and sucking insect pests.',
+      price: 780.0,
+      discountPrice: 699.0,
       stock: 35,
-      rating: 4.9,
-      numReviews: 48,
+      rating: 4.8,
+      numReviews: 62,
       featured: true,
       categoryId: bioPesticides.id,
       images: [
-        'https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?w=800&auto=format&fit=crop&q=80',
         'https://images.unsplash.com/photo-1592417817098-8f3d69109853?w=800&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=800&auto=format&fit=crop&q=80',
       ],
       attributes: {
         features: [
@@ -578,104 +456,12 @@ async function main() {
   ];
 
   for (const prod of products) {
-    const created = await prisma.product.create({
+    await prisma.product.create({
       data: prod,
     });
-
-    // Create a demo verified review for the product
-    await prisma.review.create({
-      data: {
-        rating: 5,
-        comment: `Excellent results on my farm with ${created.title}. Crop vigor and tillering improved significantly in just 10 days!`,
-        userId: customer1.id,
-        productId: created.id,
-      },
-    });
-
-    await prisma.review.create({
-      data: {
-        rating: 4,
-        comment: 'High quality genuine product. Delivered on time and helped enhance plant health.',
-        userId: customer2.id,
-        productId: created.id,
-      },
-    });
   }
 
-  console.log(`🌾 Seeded ${products.length} authentic FarmerBench agricultural products with reviews and complete CMS attributes.`);
-  
-  // 5. Create Authentic Orders & Shipping Addresses for Seeded Farmers
-  const allCreatedProducts = await prisma.product.findMany();
-
-  for (let i = 0; i < seededFarmers.length; i++) {
-    const farmer = seededFarmers[i];
-    const addr = await prisma.shippingAddress.create({
-      data: {
-        userId: farmer.id,
-        fullName: farmer.name,
-        street: '12/4 East Main Farm Road',
-        city: farmer.location ? farmer.location.split(',')[0].trim() : 'Thanjavur',
-        state: 'Tamil Nadu',
-        postalCode: '613001',
-        country: 'India',
-        phone: farmer.phone || '+91 98421 88321',
-      },
-    });
-
-    // Create 2-4 orders for each farmer
-    const orderCount = (i % 3) + 2;
-    for (let o = 0; o < orderCount; o++) {
-      const prod1 = allCreatedProducts[(i + o) % allCreatedProducts.length];
-      const prod2 = allCreatedProducts[(i + o + 2) % allCreatedProducts.length];
-
-      const item1Price = prod1.discountPrice || prod1.price;
-      const item2Price = prod2.discountPrice || prod2.price;
-      const totalAmount = item1Price * 2 + item2Price;
-
-      await prisma.order.create({
-        data: {
-          userId: farmer.id,
-          shippingAddressId: addr.id,
-          paymentMethod: 'CASH_ON_DELIVERY',
-          paymentStatus: 'PAID',
-          orderStatus: o === 0 ? 'DELIVERED' : 'PROCESSING',
-          itemsPrice: totalAmount,
-          taxPrice: Math.round(totalAmount * 0.05),
-          shippingPrice: 0,
-          totalPrice: totalAmount + Math.round(totalAmount * 0.05),
-          items: {
-            create: [
-              {
-                productId: prod1.id,
-                title: prod1.title,
-                price: item1Price,
-                quantity: 2,
-                imageUrl: prod1.images && prod1.images[0] ? prod1.images[0] : null,
-              },
-              {
-                productId: prod2.id,
-                title: prod2.title,
-                price: item2Price,
-                quantity: 1,
-                imageUrl: prod2.images && prod2.images[0] ? prod2.images[0] : null,
-              },
-            ],
-          },
-          payment: {
-            create: {
-              amount: totalAmount + Math.round(totalAmount * 0.05),
-              method: 'CASH_ON_DELIVERY',
-              status: 'PAID',
-              transactionId: 'TXN-' + Date.now().toString().slice(-6) + '-' + i + o,
-            },
-          },
-        },
-      });
-    }
-  }
-
-  console.log('?? Created authentic order histories and shipping addresses for all seeded farmers.');
-
+  console.log(`🌾 Seeded ${products.length} authentic FarmerBench agricultural products with complete CMS attributes.`);
   console.log('✅ Database seed completed successfully.');
 }
 
