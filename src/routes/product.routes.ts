@@ -1,4 +1,4 @@
-import { Router } from 'express';
+﻿import { Router } from 'express';
 import { productController } from '../controllers/product.controller';
 import { validateBody, validateQuery } from '../middlewares/validate.middleware';
 import { requireAuth, requireAdmin } from '../middlewares/auth.middleware';
@@ -15,9 +15,11 @@ const router = Router();
 router.get('/', validateQuery(ProductQuerySchema), productController.getProducts);
 router.get('/featured', productController.getFeaturedProducts);
 router.get('/:idOrSlug', productController.getProduct);
+router.get('/:productId/reviews', productController.getProductReviews);
 
 // Protected routes (Reviews)
 router.post('/reviews', requireAuth, validateBody(CreateReviewSchema), productController.addReview);
+router.post('/:productId/reviews', requireAuth, productController.addReview);
 
 // Admin-only routes
 router.post('/', requireAuth, requireAdmin, validateBody(CreateProductSchema), productController.createProduct);

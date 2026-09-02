@@ -12,7 +12,6 @@ export class ProductService {
 
   async getProductByIdOrSlug(idOrSlug: string) {
     let product;
-    // Check if it matches UUID format
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlug);
     if (isUuid) {
       product = await productRepository.findById(idOrSlug);
@@ -83,6 +82,19 @@ export class ProductService {
     return result;
   }
 
+  async getProductReviews(idOrSlug: string) {
+    const product = await this.getProductByIdOrSlug(idOrSlug);
+    const reviews = await reviewRepository.findByProductId(product.id);
+    const summary = await reviewRepository.getReviewSummary(product.id);
+
+    return {
+      productId: product.id,
+      productTitle: product.title,
+      reviews,
+      summary,
+    };
+  }
+
   async addReview(userId: string, input: CreateReviewInput) {
     const product = await productRepository.findById(input.productId);
     if (!product) {
@@ -91,10 +103,40 @@ export class ProductService {
 
     const existingReview = await reviewRepository.findByUserAndProduct(userId, input.productId);
     if (existingReview) {
-      throw new AppError('You have already submitted a review for this product', 400);
+      throw new AppError('You have already submitted a review for this product', 409);
     }
 
     return reviewRepository.create(userId, input);
+  }
+
+  async updateReview(reviewId: string, userId: string, data: { rating?: number; comment?: string }, userRole: string) {
+    const review = await reviewRepository.findById(reviewId);
+    if (!review) {
+      throw new AppError('Review not found', 404);
+    }
+
+    if (userRole !== 'ADMIN' && review.userId !== userId) {
+      throw new AppError('You can only modify your own review', 403);
+    }
+
+    return reviewRepository.update(reviewId, data);
+  }
+
+  async deleteReview(reviewId: string, userId: string, userRole: string) {
+    const review = await reviewRepository.findById(reviewId);
+    if (!review) {
+      throw new AppError('Review not found', 404);
+    }
+
+    if (userRole !== 'ADMIN' && review.userId !== userId) {
+      throw new AppError('You can only delete your own review', 403);
+    }
+
+    return reviewRepository.delete(reviewId);
+  }
+
+  async getAllReviews(params: { page?: number; limit?: number }) {
+    return reviewRepository.findAll(params);
   }
 }
 

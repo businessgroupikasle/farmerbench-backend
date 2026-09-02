@@ -1,4 +1,4 @@
-import crypto from 'crypto';
+﻿import crypto from 'crypto';
 import Razorpay from 'razorpay';
 import { prisma } from '../config/database';
 import { env } from '../config/env';
@@ -27,19 +27,19 @@ export class PaymentService {
           key_secret: env.RAZORPAY_KEY_SECRET,
         });
         this.isConfigured = true;
-        console.log('💳 Razorpay Payment Gateway configured (Live/Test Mode)');
+        console.log('✅ Razorpay Payment Gateway configured successfully with credentials');
       } catch (err) {
-        console.warn('⚠️ Razorpay initialization warning:', err);
+        console.error('❌ Razorpay initialization error:', err);
       }
     } else {
-      console.log('ℹ️ Razorpay running in Smart Test Sandbox / Simulation Mode');
+      console.warn('⚠️ Razorpay credentials missing or incomplete in .env');
     }
   }
 
   async createRazorpayOrder(orderId: string, userId: string) {
     const order = await prisma.order.findUnique({
       where: { id: orderId },
-      include: { user: true },
+      include: { user: true, payment: true },
     });
 
     if (!order) {
@@ -47,56 +47,49 @@ export class PaymentService {
     }
 
     if (order.userId !== userId) {
-      throw new AppError('You cannot pay for another customer\'s order', 403);
+      throw new AppError("You cannot pay for another customer's order", 403);
     }
 
     if (order.paymentStatus === 'PAID') {
       throw new AppError('This order is already paid', 400);
     }
 
-    const amountInPaise = Math.round(order.totalPrice * 100);
-    let razorpayOrderId: string;
-
-    if (this.isConfigured && this.razorpay) {
-      try {
-        const rzpOrder = await this.razorpay.orders.create({
-          amount: amountInPaise,
-          currency: 'INR',
-          receipt: `order_${order.id.slice(0, 8)}`,
-          notes: {
-            orderId: order.id,
-            userEmail: order.user.email,
-          },
-        });
-        razorpayOrderId = rzpOrder.id;
-      } catch (err: any) {
-        console.error('Razorpay order creation error:', err);
-        const providerMessage =
-          err?.error?.description ||
-          err?.error?.reason ||
-          err?.message ||
-          'Razorpay rejected the order request';
-
-        // If credentials failed authentication with Razorpay server (401), fallback seamlessly to sandbox mode
-        if (
-          err?.statusCode === 401 ||
-          providerMessage.toLowerCase().includes('auth') ||
-          providerMessage.toLowerCase().includes('key')
-        ) {
-          console.warn('⚠️ Razorpay authentication failed with provided API keys. Falling back to test sandbox order.');
-          razorpayOrderId = `order_sim_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
-        } else {
-          throw new AppError(`Payment provider error: ${providerMessage}`, 502, {
-            code: err?.error?.code || 'RAZORPAY_ORDER_ERROR',
-          });
-        }
-      }
-    } else {
-      // Test sandbox simulation mode
-      razorpayOrderId = `order_sim_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+    if (!this.isConfigured || !this.razorpay) {
+      throw new AppError(
+        'Razorpay Payment Gateway is not configured. Please check RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in server configuration.',
+        500
+      );
     }
 
-    // Upsert payment record in database
+    const amountInPaise = Math.round(order.totalPrice * 100);
+
+    let razorpayOrderId: string;
+    try {
+      const rzpOrder = await this.razorpay.orders.create({
+        amount: amountInPaise,
+        currency: 'INR',
+        receipt: `order_${order.id.slice(0, 8)}`,
+        notes: {
+          orderId: order.id,
+          userId: order.userId,
+          userEmail: order.user.email,
+        },
+      });
+      razorpayOrderId = rzpOrder.id;
+    } catch (err: any) {
+      console.error('Razorpay order creation error:', err);
+      const providerMessage =
+        err?.error?.description ||
+        err?.error?.reason ||
+        err?.message ||
+        'Razorpay rejected the order creation request';
+
+      throw new AppError(`Razorpay payment error: ${providerMessage}`, 502, {
+        code: err?.error?.code || 'RAZORPAY_ORDER_ERROR',
+      });
+    }
+
+    // Upsert payment record in database with the genuine Razorpay order ID
     await prisma.payment.upsert({
       where: { orderId: order.id },
       create: {
@@ -114,19 +107,14 @@ export class PaymentService {
       },
     });
 
-    const effectiveKeyId = razorpayOrderId.startsWith('order_sim_')
-      ? (env.RAZORPAY_KEY_ID?.startsWith('rzp_test_') ? env.RAZORPAY_KEY_ID : 'rzp_test_demo_key')
-      : env.RAZORPAY_KEY_ID;
-
     return {
       orderId: order.id,
       razorpayOrderId,
       amount: amountInPaise,
       currency: 'INR',
-      keyId: effectiveKeyId,
+      keyId: env.RAZORPAY_KEY_ID,
       customerName: order.user.name,
       customerEmail: order.user.email,
-      isSimulation: razorpayOrderId.startsWith('order_sim_'),
     };
   }
 
@@ -149,41 +137,38 @@ export class PaymentService {
     }
 
     if (order.userId !== userId) {
-      throw new AppError('You cannot verify another customer\'s payment', 403);
+      throw new AppError("You cannot verify another customer's payment", 403);
     }
 
     if (order.payment?.transactionId !== data.razorpayOrderId) {
-      throw new AppError('Razorpay order does not match this checkout', 400);
+      throw new AppError('Razorpay order ID does not match this transaction', 400);
     }
 
-    const isSimulated =
-      data.razorpayOrderId.startsWith('order_sim_') ||
-      data.razorpayPaymentId.startsWith('pay_sim_');
-
-    // In live mode, verify cryptographic HMAC signature
-    if (
-      !isSimulated &&
-      this.isConfigured &&
-      env.RAZORPAY_KEY_SECRET &&
-      !env.RAZORPAY_KEY_SECRET.includes('*') &&
-      env.RAZORPAY_KEY_SECRET !== 'rzp_test_demo_secret'
-    ) {
-      const generatedSignature = crypto
-        .createHmac('sha256', env.RAZORPAY_KEY_SECRET)
-        .update(`${data.razorpayOrderId}|${data.razorpayPaymentId}`)
-        .digest('hex');
-
-      if (generatedSignature !== data.razorpaySignature) {
-        // Mark payment failed
-        await prisma.payment.update({
-          where: { orderId: order.id },
-          data: { status: 'FAILED' },
-        });
-        throw new AppError('Payment signature verification failed. Possible tampering detected.', 400);
-      }
+    if (!env.RAZORPAY_KEY_SECRET) {
+      throw new AppError('Razorpay key secret is not configured on server', 500);
     }
 
-    // Commit inventory, payment, order, and cart atomically after verification.
+    // Cryptographic HMAC-SHA256 Signature Verification
+    const generatedSignature = crypto
+      .createHmac('sha256', env.RAZORPAY_KEY_SECRET)
+      .update(`${data.razorpayOrderId}|${data.razorpayPaymentId}`)
+      .digest('hex');
+
+    const isMatch = crypto.timingSafeEqual(
+      Buffer.from(generatedSignature, 'utf-8'),
+      Buffer.from(data.razorpaySignature, 'utf-8')
+    );
+
+    if (!isMatch) {
+      // Mark payment failed upon signature mismatch
+      await prisma.payment.update({
+        where: { orderId: order.id },
+        data: { status: 'FAILED' },
+      });
+      throw new AppError('Payment signature verification failed. The transaction could not be authenticated.', 400);
+    }
+
+    // Atomic Transaction: Decrement stock, mark order & payment as PAID, and clear user's cart
     const { updatedOrder, updatedPayment } = await prisma.$transaction(async (tx) => {
       const currentOrder = await tx.order.findUnique({
         where: { id: order.id },
@@ -194,24 +179,35 @@ export class PaymentService {
         throw new AppError('Order not found', 404);
       }
 
+      // If already paid, return safely (idempotent)
       if (currentOrder.paymentStatus === 'PAID') {
         return { updatedOrder: currentOrder, updatedPayment: currentOrder.payment! };
       }
 
+      // Decrement stock for all items
       for (const item of currentOrder.items) {
         const stockUpdate = await tx.product.updateMany({
           where: { id: item.productId, stock: { gte: item.quantity } },
           data: { stock: { decrement: item.quantity } },
         });
         if (stockUpdate.count !== 1) {
-          throw new AppError(`Insufficient stock for ${item.title}. Payment cannot be confirmed.`, 409);
+          throw new AppError(
+            `Insufficient stock for "${item.title}". Payment could not be completed.`,
+            409
+          );
         }
       }
 
+      // Update Order Status to PAID / PROCESSING
       const paidOrder = await tx.order.update({
         where: { id: currentOrder.id },
-        data: { paymentStatus: 'PAID', orderStatus: 'PROCESSING' },
+        data: {
+          paymentStatus: 'PAID',
+          orderStatus: 'PROCESSING',
+        },
       });
+
+      // Update Payment Record with final payment ID
       const paidPayment = await tx.payment.upsert({
         where: { orderId: currentOrder.id },
         create: {
@@ -221,9 +217,13 @@ export class PaymentService {
           status: 'PAID',
           transactionId: data.razorpayPaymentId,
         },
-        update: { status: 'PAID', transactionId: data.razorpayPaymentId },
+        update: {
+          status: 'PAID',
+          transactionId: data.razorpayPaymentId,
+        },
       });
 
+      // Clear User Cart
       const cart = await tx.cart.findUnique({ where: { userId: currentOrder.userId } });
       if (cart) {
         await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
@@ -234,7 +234,7 @@ export class PaymentService {
 
     return {
       success: true,
-      message: 'Payment verified and order marked as paid',
+      message: 'Payment verified successfully and order confirmed',
       order: updatedOrder,
       payment: updatedPayment,
     };

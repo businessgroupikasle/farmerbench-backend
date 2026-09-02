@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+﻿import { Request, Response, NextFunction } from 'express';
 import { productService } from '../services/product.service';
 import { sendSuccess, sendPaginated } from '../utils/response';
 
@@ -65,10 +65,64 @@ export class ProductController {
     }
   }
 
+  async getProductReviews(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await productService.getProductReviews(req.params.productId || req.params.idOrSlug);
+      return sendSuccess(res, result, 'Product reviews retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async addReview(req: Request, res: Response, next: NextFunction) {
     try {
-      const review = await productService.addReview(req.user!.userId, req.body);
+      const productId = req.params.productId || req.body.productId;
+      const review = await productService.addReview(req.user!.userId, {
+        ...req.body,
+        productId,
+      });
       return sendSuccess(res, review, 'Review submitted successfully', 201);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateReview(req: Request, res: Response, next: NextFunction) {
+    try {
+      const reviewId = req.params.reviewId || req.params.id;
+      const updated = await productService.updateReview(
+        reviewId,
+        req.user!.userId,
+        req.body,
+        req.user!.role
+      );
+      return sendSuccess(res, updated, 'Review updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async deleteReview(req: Request, res: Response, next: NextFunction) {
+    try {
+      const reviewId = req.params.reviewId || req.params.id;
+      await productService.deleteReview(reviewId, req.user!.userId, req.user!.role);
+      return sendSuccess(res, null, 'Review deleted successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getAllReviews(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await productService.getAllReviews(req.query as any);
+      return sendPaginated(res, result.reviews, {
+        page: result.page,
+        limit: result.limit,
+        total: result.total,
+        totalPages: result.totalPages,
+        hasNextPage: result.hasNextPage,
+        hasPrevPage: result.hasPrevPage,
+      });
     } catch (error) {
       next(error);
     }
