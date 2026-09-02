@@ -27,12 +27,12 @@ export class PaymentService {
           key_secret: env.RAZORPAY_KEY_SECRET,
         });
         this.isConfigured = true;
-        console.log('✅ Razorpay Payment Gateway configured successfully with credentials');
+        console.log('? Razorpay Payment Gateway configured successfully with credentials');
       } catch (err) {
-        console.error('❌ Razorpay initialization error:', err);
+        console.error('? Razorpay initialization error:', err);
       }
     } else {
-      console.warn('⚠️ Razorpay credentials missing or incomplete in .env');
+      console.warn('?? Razorpay credentials missing or incomplete in .env');
     }
   }
 
@@ -186,15 +186,50 @@ export class PaymentService {
 
       // Decrement stock for all items
       for (const item of currentOrder.items) {
-        const stockUpdate = await tx.product.updateMany({
-          where: { id: item.productId, stock: { gte: item.quantity } },
-          data: { stock: { decrement: item.quantity } },
+        const product = await tx.product.findUnique({ where: { id: item.productId } });
+        if (!product) continue;
+
+        const attrs = (product.attributes as Record<string, any>) || {};
+        const variants: Array<{
+          packSize: string;
+          price: number;
+          comparePrice?: number;
+          stock?: number;
+          sku?: string;
+        }> = Array.isArray(attrs.variants) ? attrs.variants : [];
+
+        let variantUpdated = false;
+        const newVariants = variants.map((v) => {
+          if (item.title.includes(`(${v.packSize})`) || item.title.endsWith(v.packSize)) {
+            variantUpdated = true;
+            const currentStock = typeof v.stock === 'number' ? v.stock : product.stock;
+            return { ...v, stock: Math.max(0, currentStock - item.quantity) };
+          }
+          return v;
         });
-        if (stockUpdate.count !== 1) {
-          throw new AppError(
-            `Insufficient stock for "${item.title}". Payment could not be completed.`,
-            409
-          );
+
+        if (variantUpdated) {
+          await tx.product.update({
+            where: { id: product.id },
+            data: {
+              stock: Math.max(0, product.stock - item.quantity),
+              attributes: {
+                ...attrs,
+                variants: newVariants,
+              },
+            },
+          });
+        } else {
+          const stockUpdate = await tx.product.updateMany({
+            where: { id: item.productId, stock: { gte: item.quantity } },
+            data: { stock: { decrement: item.quantity } },
+          });
+          if (stockUpdate.count !== 1) {
+            throw new AppError(
+              `Insufficient stock for "${item.title}". Payment could not be completed.`,
+              409
+            );
+          }
         }
       }
 

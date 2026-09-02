@@ -1,4 +1,4 @@
-import { cartRepository } from '../repositories/cart.repository';
+﻿import { cartRepository } from '../repositories/cart.repository';
 import { productRepository } from '../repositories/product.repository';
 import { AddToCartInput, SyncCartInput } from '@formerbench/shared';
 import { AppError } from '../utils/response';
@@ -22,7 +22,17 @@ export class CartService {
     let totalItems = 0;
 
     for (const item of items) {
-      const price = item.product.discountPrice ?? item.product.price;
+      const selectedAttrs = (item.selectedAttributes as Record<string, any>) || {};
+      const packSize = selectedAttrs.packSize;
+      const attrs = (item.product?.attributes as Record<string, any>) || {};
+      const variants: Array<{ packSize: string; price: number; comparePrice?: number; stock?: number }> =
+        Array.isArray(attrs.variants) ? attrs.variants : [];
+      const matchedVariant = packSize ? variants.find((v) => v.packSize === packSize) : null;
+
+      const price = matchedVariant
+        ? Number(matchedVariant.price)
+        : (item.product?.discountPrice ?? item.product?.price ?? 0);
+
       subtotal += price * item.quantity;
       totalItems += item.quantity;
     }
@@ -49,8 +59,22 @@ export class CartService {
       throw new AppError('Product not found', 404);
     }
 
-    if (product.stock < input.quantity) {
-      throw new AppError(`Only ${product.stock} items in stock`, 400);
+    const selectedAttrs = (input.selectedAttributes as Record<string, any>) || {};
+    const packSize = selectedAttrs.packSize;
+    const attrs = (product.attributes as Record<string, any>) || {};
+    const variants: Array<{ packSize: string; price: number; comparePrice?: number; stock?: number }> =
+      Array.isArray(attrs.variants) ? attrs.variants : [];
+    const matchedVariant = packSize ? variants.find((v) => v.packSize === packSize) : null;
+    const availableStock =
+      matchedVariant && typeof matchedVariant.stock === 'number'
+        ? matchedVariant.stock
+        : product.stock;
+
+    if (availableStock < input.quantity) {
+      throw new AppError(
+        `Only ${availableStock} items in stock for "${product.title}${packSize ? ` (${packSize})` : ''}"`,
+        400
+      );
     }
 
     const cart = await cartRepository.addItem(
@@ -74,8 +98,19 @@ export class CartService {
       throw new AppError('Cart item not found', 404);
     }
 
-    if (quantity > 0 && item.product.stock < quantity) {
-      throw new AppError(`Only ${item.product.stock} items in stock`, 400);
+    const selectedAttrs = (item.selectedAttributes as Record<string, any>) || {};
+    const packSize = selectedAttrs.packSize;
+    const attrs = (item.product.attributes as Record<string, any>) || {};
+    const variants: Array<{ packSize: string; price: number; comparePrice?: number; stock?: number }> =
+      Array.isArray(attrs.variants) ? attrs.variants : [];
+    const matchedVariant = packSize ? variants.find((v) => v.packSize === packSize) : null;
+    const availableStock =
+      matchedVariant && typeof matchedVariant.stock === 'number'
+        ? matchedVariant.stock
+        : item.product.stock;
+
+    if (quantity > 0 && availableStock < quantity) {
+      throw new AppError(`Only ${availableStock} items in stock`, 400);
     }
 
     const updated = await cartRepository.updateItem(userId, cartItemId, quantity);

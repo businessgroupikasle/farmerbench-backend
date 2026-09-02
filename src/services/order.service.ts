@@ -1,4 +1,4 @@
-import { orderRepository } from '../repositories/order.repository';
+﻿import { orderRepository } from '../repositories/order.repository';
 import { cartRepository } from '../repositories/cart.repository';
 import { productRepository } from '../repositories/product.repository';
 import { CreateOrderInput, UpdateOrderStatusInput, OrderStatus } from '@formerbench/shared';
@@ -20,13 +20,44 @@ export class OrderService {
         if (!product) {
           throw new AppError(`Product not found: ${item.productId}`, 404);
         }
-        if (product.stock < item.quantity) {
-          throw new AppError(`Insufficient stock for "${product.title}". Only ${product.stock} available.`, 400);
+
+        const selectedAttrs = (item as any).selectedAttributes || {};
+        const packSize = selectedAttrs.packSize;
+        const attrs = (product.attributes as Record<string, any>) || {};
+        const variants: Array<{
+          packSize: string;
+          price: number;
+          comparePrice?: number;
+          stock?: number;
+          sku?: string;
+        }> = Array.isArray(attrs.variants) ? attrs.variants : [];
+
+        const matchedVariant = packSize ? variants.find((v) => v.packSize === packSize) : null;
+
+        // Authoritative price & stock strictly from PostgreSQL
+        const unitPrice = matchedVariant
+          ? Number(matchedVariant.price)
+          : (product.discountPrice ?? product.price);
+        const availableStock =
+          matchedVariant && typeof matchedVariant.stock === 'number'
+            ? matchedVariant.stock
+            : product.stock;
+
+        if (availableStock < item.quantity) {
+          throw new AppError(
+            `Insufficient stock for "${product.title}${packSize ? ` (${packSize})` : ''}". Only ${availableStock} available.`,
+            400
+          );
         }
-        const unitPrice = product.discountPrice ?? product.price;
+
+        const itemTitle =
+          packSize && !product.title.includes(packSize)
+            ? `${product.title} (${packSize})`
+            : product.title;
+
         orderItemsToCreate.push({
           productId: product.id,
-          title: product.title,
+          title: itemTitle,
           price: unitPrice,
           quantity: item.quantity,
           imageUrl: product.images[0] || null,
@@ -40,13 +71,43 @@ export class OrderService {
       }
 
       for (const item of cart.items) {
-        if (item.product.stock < item.quantity) {
-          throw new AppError(`Insufficient stock for "${item.product.title}". Only ${item.product.stock} available.`, 400);
+        const selectedAttrs = (item.selectedAttributes as Record<string, any>) || {};
+        const packSize = selectedAttrs.packSize;
+        const attrs = (item.product.attributes as Record<string, any>) || {};
+        const variants: Array<{
+          packSize: string;
+          price: number;
+          comparePrice?: number;
+          stock?: number;
+          sku?: string;
+        }> = Array.isArray(attrs.variants) ? attrs.variants : [];
+
+        const matchedVariant = packSize ? variants.find((v) => v.packSize === packSize) : null;
+
+        // Authoritative price & stock strictly from PostgreSQL
+        const unitPrice = matchedVariant
+          ? Number(matchedVariant.price)
+          : (item.product.discountPrice ?? item.product.price);
+        const availableStock =
+          matchedVariant && typeof matchedVariant.stock === 'number'
+            ? matchedVariant.stock
+            : item.product.stock;
+
+        if (availableStock < item.quantity) {
+          throw new AppError(
+            `Insufficient stock for "${item.product.title}${packSize ? ` (${packSize})` : ''}". Only ${availableStock} available.`,
+            400
+          );
         }
-        const unitPrice = item.product.discountPrice ?? item.product.price;
+
+        const itemTitle =
+          packSize && !item.product.title.includes(packSize)
+            ? `${item.product.title} (${packSize})`
+            : item.product.title;
+
         orderItemsToCreate.push({
           productId: item.productId,
-          title: item.product.title,
+          title: itemTitle,
           price: unitPrice,
           quantity: item.quantity,
           imageUrl: item.product.images[0] || null,
@@ -54,7 +115,7 @@ export class OrderService {
       }
     }
 
-    // Calculate Prices
+    // Calculate Prices Authoritatively on Backend
     const itemsPrice = Number(
       orderItemsToCreate.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2)
     );
