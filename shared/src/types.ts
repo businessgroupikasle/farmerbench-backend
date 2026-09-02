@@ -244,3 +244,58 @@ export interface ProductQueryParams {
   sortBy?: 'newest' | 'price_asc' | 'price_desc' | 'rating' | 'popular';
   featured?: boolean;
 }
+
+// Service Bookings
+export type BookingStatus =
+  | 'NEW'
+  | 'CONTACTED'
+  | 'IN_PROGRESS'
+  | 'COMPLETED'
+  | 'CANCELLED';
+
+export interface ServiceBooking {
+  id: string;
+  bookingReference: string;
+  serviceSlug: string;
+  serviceName: string;
+  name: string;
+  phone: string;
+  email?: string | null;
+  location: string;
+  farmSize?: string | null;
+  cropType?: string | null;
+  preferredDate?: string | Date | null;
+  message?: string | null;
+  adminNotes?: string | null;
+  status: BookingStatus;
+  userId?: string | null;
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+    phone?: string | null;
+  } | null;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+}
+
+export interface ServiceBookingStats {
+  totalBookings: number;
+  newBookings: number;
+  contactedBookings: number;
+  inProgressBookings: number;
+  completedBookings: number;
+  cancelledBookings: number;
+  recentBookings: ServiceBooking[];
+  serviceBreakdown: { serviceName: string; serviceSlug: string; count: number }[];
+}
+
+export interface ServiceBookingQueryParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  serviceSlug?: string;
+  status?: BookingStatus | string;
+  sortBy?: 'newest' | 'oldest';
+}
+

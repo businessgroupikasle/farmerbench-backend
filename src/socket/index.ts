@@ -1,4 +1,4 @@
-﻿import { Server as SocketIOServer, Socket } from 'socket.io';
+import { Server as SocketIOServer, Socket } from 'socket.io';
 import { Server as HttpServer } from 'http';
 import { env } from '../config/env';
 
@@ -86,3 +86,16 @@ export const emitCategoryDeleted = (payload: { id: string }) => {
   console.log(`📢 Broadcasting Socket.IO event 'category:deleted': (${payload.id})`);
   io.emit('category:deleted', payload);
 };
+
+export const emitBookingCreated = (booking: any) => {
+  if (!io) return;
+  console.log(`📢 Broadcasting Socket.IO event 'booking:created': ${booking.serviceName} (${booking.bookingReference})`);
+  io.emit('booking:created', booking);
+};
+
+export const emitBookingUpdated = (booking: any) => {
+  if (!io) return;
+  console.log(`📢 Broadcasting Socket.IO event 'booking:updated': ${booking.bookingReference} status -> ${booking.status}`);
+  io.emit('booking:updated', booking);
+};
+

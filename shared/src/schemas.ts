@@ -251,6 +251,42 @@ export const CreateReviewSchema = z.object({
 });
 
 // ============================================================================
+// SERVICE BOOKING SCHEMAS
+// ============================================================================
+
+export const CreateServiceBookingSchema = z.object({
+  serviceSlug: z.string().min(2, 'Service identifier is required'),
+  serviceName: z.string().min(2, 'Service name is required'),
+  name: z.string().min(2, 'Name must be at least 2 characters'),
+  phone: IndianMobileSchema,
+  email: z
+    .string()
+    .email('Invalid email address')
+    .optional()
+    .nullable()
+    .or(z.literal('')),
+  location: z.string().min(2, 'Location is required'),
+  farmSize: z.string().optional().nullable(),
+  cropType: z.string().optional().nullable(),
+  preferredDate: z.string().optional().nullable(),
+  message: z.string().max(2000, 'Message cannot exceed 2000 characters').optional().nullable(),
+});
+
+export const UpdateServiceBookingStatusSchema = z.object({
+  status: z.enum(['NEW', 'CONTACTED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED']),
+  adminNotes: z.string().max(3000).optional().nullable(),
+});
+
+export const ServiceBookingQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(100).default(15),
+  search: z.string().optional(),
+  serviceSlug: z.string().optional(),
+  status: z.string().optional(),
+  sortBy: z.enum(['newest', 'oldest']).default('newest'),
+});
+
+// ============================================================================
 // TYPE INFERENCES
 // ============================================================================
 
@@ -291,3 +327,8 @@ export type CreateRazorpayOrderInput = z.infer<typeof CreateRazorpayOrderSchema>
 export type VerifyRazorpayPaymentInput = z.infer<typeof VerifyRazorpayPaymentSchema>;
 
 export type CreateReviewInput = z.infer<typeof CreateReviewSchema>;
+
+export type CreateServiceBookingInput = z.infer<typeof CreateServiceBookingSchema>;
+export type UpdateServiceBookingStatusInput = z.infer<typeof UpdateServiceBookingStatusSchema>;
+export type ServiceBookingQueryInput = z.infer<typeof ServiceBookingQuerySchema>;
+

@@ -125,9 +125,9 @@ export class OrderRepository {
     });
   }
 
-  async findAll(params: { page?: number; limit?: number; status?: OrderStatus }) {
-    const page = params.page || 1;
-    const limit = params.limit || 15;
+  async findAll(params: { page?: number | string; limit?: number | string; status?: OrderStatus }) {
+    const page = Number(params.page) > 0 ? Number(params.page) : 1;
+    const limit = Number(params.limit) > 0 ? Number(params.limit) : 15;
     const skip = (page - 1) * limit;
 
     const where = params.status ? { orderStatus: params.status } : {};

@@ -41,6 +41,14 @@ enum OtpPurpose {
   PASSWORD_RESET
 }
 
+enum BookingStatus {
+  NEW
+  CONTACTED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
 model User {
   id                  String               @id @default(uuid())
   email               String               @unique
@@ -58,6 +66,7 @@ model User {
   reviews             Review[]
   savedAddresses      ShippingAddress[]
   passwordResetTokens PasswordResetToken[]
+  serviceBookings     ServiceBooking[]
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
 
@@ -245,3 +254,31 @@ model Review {
   @@index([productId])
   @@index([userId])
 }
+
+model ServiceBooking {
+  id               String        @id @default(uuid())
+  bookingReference String        @unique
+  serviceSlug      String
+  serviceName      String
+  name             String
+  phone            String
+  email            String?
+  location         String
+  farmSize         String?
+  cropType         String?
+  preferredDate    DateTime?
+  message          String?       @db.Text
+  adminNotes       String?       @db.Text
+  status           BookingStatus @default(NEW)
+  userId           String?
+  user             User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@index([serviceSlug])
+  @@index([status])
+  @@index([phone])
+  @@index([createdAt])
+  @@index([userId])
+}
+
