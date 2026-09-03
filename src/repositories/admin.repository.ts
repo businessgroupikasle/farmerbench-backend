@@ -2,6 +2,9 @@ import { prisma } from '../config/database';
 
 export class AdminRepository {
   async getDashboardStats() {
+    const finalizedOrders = {
+      OR: [{ paymentMethod: 'CASH_ON_DELIVERY' as const }, { paymentStatus: 'PAID' as const }],
+    };
     const [
       revenueAggregate,
       totalOrders,
@@ -11,14 +14,16 @@ export class AdminRepository {
       lowStockProducts,
     ] = await Promise.all([
       prisma.order.aggregate({
+        where: finalizedOrders,
         _sum: { totalPrice: true },
       }),
-      prisma.order.count(),
+      prisma.order.count({ where: finalizedOrders }),
       prisma.product.count(),
       prisma.user.count({
         where: { role: 'CUSTOMER' },
       }),
       prisma.order.findMany({
+        where: finalizedOrders,
         take: 5,
         orderBy: { createdAt: 'desc' },
         include: {
@@ -39,6 +44,7 @@ export class AdminRepository {
 
     // Compute monthly sales for the current year
     const pastOrders = await prisma.order.findMany({
+      where: finalizedOrders,
       select: {
         totalPrice: true,
         createdAt: true,

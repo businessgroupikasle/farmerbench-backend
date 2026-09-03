@@ -10,12 +10,16 @@ export class OrderRepository {
       title: string;
       price: number;
       quantity: number;
+      variantId?: string;
+      selectedAttributes?: { packSize?: string };
       imageUrl?: string | null;
     }[];
     itemsPrice: number;
     taxPrice: number;
     shippingPrice: number;
     totalPrice: number;
+    discountPrice: number;
+    couponCode?: string;
   }) {
     return prisma.$transaction(async (tx) => {
       const isRazorpay = data.paymentMethod === 'RAZORPAY';
@@ -45,12 +49,16 @@ export class OrderRepository {
           taxPrice: data.taxPrice,
           shippingPrice: data.shippingPrice,
           totalPrice: data.totalPrice,
+          discountPrice: data.discountPrice,
+          couponCode: data.couponCode,
           items: {
             create: data.items.map((item) => ({
               productId: item.productId,
               title: item.title,
               price: item.price,
               quantity: item.quantity,
+              variantId: item.variantId,
+              selectedAttributes: item.selectedAttributes,
               imageUrl: item.imageUrl,
             })),
           },
@@ -78,10 +86,38 @@ export class OrderRepository {
       // Razorpay stock is committed only after verified payment.
       if (!isRazorpay) {
         for (const item of data.items) {
-          await tx.product.update({
-            where: { id: item.productId },
-            data: { stock: { decrement: item.quantity } },
-          });
+          if (item.variantId) {
+            await tx.$queryRaw`SELECT id FROM "Product" WHERE id = ${item.productId} FOR UPDATE`;
+            const product = await tx.product.findUnique({ where: { id: item.productId } });
+            if (!product) throw new Error(`Product not found: ${item.productId}`);
+            const attrs = (product.attributes as Record<string, any>) || {};
+            const variants = Array.isArray(attrs.variants) ? attrs.variants : [];
+            let found = false;
+            const updatedVariants = variants.map((variant: any) => {
+              if (![variant.id, variant.variantId, variant.sku].includes(item.variantId)) return variant;
+              found = true;
+              const stock = Number(variant.stock);
+              if (!Number.isFinite(stock) || stock < item.quantity) {
+                throw new Error(`Insufficient stock for variant ${item.variantId}`);
+              }
+              return { ...variant, stock: stock - item.quantity };
+            });
+            if (!found) throw new Error(`Variant not found: ${item.variantId}`);
+            await tx.product.update({
+              where: { id: item.productId },
+              data: { attributes: { ...attrs, variants: updatedVariants } },
+            });
+          } else {
+            const result = await tx.product.updateMany({
+              where: { id: item.productId, stock: { gte: item.quantity } },
+              data: { stock: { decrement: item.quantity } },
+            });
+            if (result.count !== 1) throw new Error(`Insufficient stock for ${item.productId}`);
+          }
+        }
+        if (data.couponCode) {
+          await tx.coupon.update({ where: { code: data.couponCode }, data: { usageCount: { increment: 1 } } });
+          await tx.order.update({ where: { id: order.id }, data: { couponRedeemed: true } });
         }
       }
 
@@ -110,7 +146,7 @@ export class OrderRepository {
       where: {
         userId,
         OR: [
-          { paymentMethod: { not: 'RAZORPAY' } },
+          { paymentMethod: 'CASH_ON_DELIVERY' },
           { paymentStatus: 'PAID' },
         ],
       },
@@ -130,7 +166,12 @@ export class OrderRepository {
     const limit = Number(params.limit) > 0 ? Number(params.limit) : 15;
     const skip = (page - 1) * limit;
 
-    const where = params.status ? { orderStatus: params.status } : {};
+    const where = {
+      AND: [
+        params.status ? { orderStatus: params.status } : {},
+        { OR: [{ paymentMethod: 'CASH_ON_DELIVERY' as const }, { paymentStatus: 'PAID' as const }] },
+      ],
+    };
 
     const [orders, total] = await Promise.all([
       prisma.order.findMany({

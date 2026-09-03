@@ -212,10 +212,15 @@ export const ShippingAddressSchema = z.object({
 export const CreateOrderSchema = z.object({
   shippingAddress: ShippingAddressSchema,
   paymentMethod: z.enum(['CREDIT_CARD', 'PAYPAL', 'STRIPE', 'CASH_ON_DELIVERY', 'RAZORPAY']),
+  couponCode: z.string().trim().min(1).max(50).optional(),
   items: z.array(
     z.object({
       productId: z.string().uuid(),
       quantity: z.number().int().positive(),
+      variantId: z.string().min(1).optional(),
+      selectedAttributes: z.object({
+        packSize: z.string().min(1).optional(),
+      }).optional(),
     })
   ).optional(),
 });
@@ -331,4 +336,3 @@ export type CreateReviewInput = z.infer<typeof CreateReviewSchema>;
 export type CreateServiceBookingInput = z.infer<typeof CreateServiceBookingSchema>;
 export type UpdateServiceBookingStatusInput = z.infer<typeof UpdateServiceBookingStatusSchema>;
 export type ServiceBookingQueryInput = z.infer<typeof ServiceBookingQuerySchema>;
-

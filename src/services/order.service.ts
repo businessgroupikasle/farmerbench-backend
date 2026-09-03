@@ -3,6 +3,7 @@ import { cartRepository } from '../repositories/cart.repository';
 import { productRepository } from '../repositories/product.repository';
 import { CreateOrderInput, UpdateOrderStatusInput, OrderStatus } from '@formerbench/shared';
 import { AppError } from '../utils/response';
+import { couponService } from './coupon.service';
 
 export class OrderService {
   async createOrder(userId: string, input: CreateOrderInput) {
@@ -11,6 +12,8 @@ export class OrderService {
       title: string;
       price: number;
       quantity: number;
+      variantId?: string;
+      selectedAttributes?: { packSize?: string };
       imageUrl?: string | null;
     }[] = [];
 
@@ -21,22 +24,32 @@ export class OrderService {
           throw new AppError(`Product not found: ${item.productId}`, 404);
         }
 
-        const selectedAttrs = (item as any).selectedAttributes || {};
+        const selectedAttrs = item.selectedAttributes || {};
         const packSize = selectedAttrs.packSize;
         const attrs = (product.attributes as Record<string, any>) || {};
         const variants: Array<{
-          packSize: string;
-          price: number;
+          id?: string;
+          variantId?: string;
+          label?: string;
+          packSize?: string;
+          price?: number;
+          sellingPrice?: number;
           comparePrice?: number;
           stock?: number;
           sku?: string;
         }> = Array.isArray(attrs.variants) ? attrs.variants : [];
 
-        const matchedVariant = packSize ? variants.find((v) => v.packSize === packSize) : null;
+        const matchedVariant = variants.find((v) =>
+          Boolean(item.variantId) && [v.id, v.variantId, v.sku].includes(item.variantId)
+        ) || (packSize ? variants.find((v) => (v.label || v.packSize) === packSize) : null);
+
+        if ((item.variantId || packSize) && !matchedVariant) {
+          throw new AppError(`Selected variant is no longer available for "${product.title}".`, 400);
+        }
 
         // Authoritative price & stock strictly from PostgreSQL
         const unitPrice = matchedVariant
-          ? Number(matchedVariant.price)
+          ? Number(matchedVariant.sellingPrice ?? matchedVariant.price)
           : (product.discountPrice ?? product.price);
         const availableStock =
           matchedVariant && typeof matchedVariant.stock === 'number'
@@ -60,6 +73,8 @@ export class OrderService {
           title: itemTitle,
           price: unitPrice,
           quantity: item.quantity,
+          variantId: matchedVariant ? (matchedVariant.id || matchedVariant.variantId || matchedVariant.sku) : undefined,
+          selectedAttributes: packSize ? { packSize } : undefined,
           imageUrl: product.images[0] || null,
         });
       }
@@ -75,18 +90,29 @@ export class OrderService {
         const packSize = selectedAttrs.packSize;
         const attrs = (item.product.attributes as Record<string, any>) || {};
         const variants: Array<{
-          packSize: string;
-          price: number;
+          id?: string;
+          variantId?: string;
+          label?: string;
+          packSize?: string;
+          price?: number;
+          sellingPrice?: number;
           comparePrice?: number;
           stock?: number;
           sku?: string;
         }> = Array.isArray(attrs.variants) ? attrs.variants : [];
 
-        const matchedVariant = packSize ? variants.find((v) => v.packSize === packSize) : null;
+        const requestedVariantId = selectedAttrs.variantId || selectedAttrs.sku;
+        const matchedVariant = variants.find((v) =>
+          Boolean(requestedVariantId) && [v.id, v.variantId, v.sku].includes(requestedVariantId)
+        ) || (packSize ? variants.find((v) => (v.label || v.packSize) === packSize) : null);
+
+        if ((requestedVariantId || packSize) && !matchedVariant) {
+          throw new AppError(`Selected variant is no longer available for "${item.product.title}".`, 400);
+        }
 
         // Authoritative price & stock strictly from PostgreSQL
         const unitPrice = matchedVariant
-          ? Number(matchedVariant.price)
+          ? Number(matchedVariant.sellingPrice ?? matchedVariant.price)
           : (item.product.discountPrice ?? item.product.price);
         const availableStock =
           matchedVariant && typeof matchedVariant.stock === 'number'
@@ -110,6 +136,8 @@ export class OrderService {
           title: itemTitle,
           price: unitPrice,
           quantity: item.quantity,
+          variantId: matchedVariant ? (matchedVariant.id || matchedVariant.variantId || matchedVariant.sku) : undefined,
+          selectedAttributes: packSize ? { packSize } : undefined,
           imageUrl: item.product.images[0] || null,
         });
       }
@@ -121,7 +149,11 @@ export class OrderService {
     );
     const shippingPrice = itemsPrice >= 999 ? 0 : 80;
     const taxPrice = 0; // Displayed product prices are GST-inclusive.
-    const totalPrice = Number((itemsPrice + shippingPrice + taxPrice).toFixed(2));
+    const couponResult = input.couponCode
+      ? await couponService.calculate(input.couponCode, itemsPrice)
+      : null;
+    const discountPrice = couponResult?.discountAmount || 0;
+    const totalPrice = Number(Math.max(0, itemsPrice - discountPrice + shippingPrice + taxPrice).toFixed(2));
 
     const order = await orderRepository.create(userId, {
       shippingAddress: input.shippingAddress,
@@ -131,6 +163,8 @@ export class OrderService {
       taxPrice,
       shippingPrice,
       totalPrice,
+      discountPrice,
+      couponCode: couponResult?.coupon.code,
     });
 
     // Online-payment carts are cleared only after payment verification.
@@ -166,6 +200,10 @@ export class OrderService {
     const order = await orderRepository.findById(orderId);
     if (!order) {
       throw new AppError('Order not found', 404);
+    }
+
+    if (order.paymentMethod === 'RAZORPAY' && input.paymentStatus === 'PAID') {
+      throw new AppError('Razorpay orders can only be marked paid by verified payment processing', 400);
     }
 
     return orderRepository.updateStatus(orderId, input.orderStatus, input.paymentStatus);

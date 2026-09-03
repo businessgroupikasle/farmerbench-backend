@@ -8,6 +8,7 @@ import { prisma } from './config/database';
 import apiRouter from './routes';
 import { errorHandler } from './middlewares/error.middleware';
 import { initSocketIO } from './socket';
+import paymentWebhookRouter from './routes/payment.webhook.routes';
 
 const app = express();
 const httpServer = http.createServer(app);
@@ -32,6 +33,8 @@ app.use(
   })
 );
 
+// Razorpay signatures are calculated over the exact bytes received.
+app.use('/api/payments/webhook', express.raw({ type: 'application/json' }), paymentWebhookRouter);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

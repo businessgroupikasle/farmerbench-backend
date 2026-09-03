@@ -165,6 +165,8 @@ export interface OrderItem {
   title: string;
   price: number;
   quantity: number;
+  variantId?: string | null;
+  selectedAttributes?: Record<string, string> | null;
   imageUrl?: string | null;
 }
 
@@ -196,6 +198,8 @@ export interface Order {
   taxPrice: number;
   shippingPrice: number;
   totalPrice: number;
+  discountPrice?: number;
+  couponCode?: string | null;
   payment?: Payment | null;
   createdAt: string | Date;
   updatedAt: string | Date;
@@ -298,4 +302,3 @@ export interface ServiceBookingQueryParams {
   status?: BookingStatus | string;
   sortBy?: 'newest' | 'oldest';
 }
-

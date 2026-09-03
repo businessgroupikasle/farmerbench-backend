@@ -35,4 +35,14 @@ router.post('/verify', validateBody(VerifyRazorpayPaymentSchema), async (req: Re
   }
 });
 
+router.post('/cancel', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (typeof req.body.orderId !== 'string') return res.status(400).json({ success: false, message: 'orderId is required' });
+    const result = await paymentService.cancelAttempt(req.body.orderId, req.user!.userId);
+    return sendSuccess(res, result, 'Payment attempt cancelled');
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

@@ -29,6 +29,7 @@ const envSchema = z.object({
   // Razorpay Payment Gateway
   RAZORPAY_KEY_ID: z.string().optional().default('rzp_test_demo_key'),
   RAZORPAY_KEY_SECRET: z.string().optional().default('rzp_test_demo_secret'),
+  RAZORPAY_WEBHOOK_SECRET: z.string().optional().default(''),
 
   // Upload Configuration
   UPLOAD_DIR: z.string().default('uploads'),

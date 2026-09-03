@@ -9,6 +9,7 @@ import uploadRoutes from './upload.routes';
 import paymentRoutes from './payment.routes';
 import serviceBookingRoutes from './serviceBooking.routes';
 import reviewRoutes from './review.routes';
+import couponRoutes from './coupon.routes';
 
 const router = Router();
 
@@ -22,5 +23,6 @@ router.use('/admin', adminRoutes);
 router.use('/upload', uploadRoutes);
 router.use('/payments', paymentRoutes);
 router.use('/service-bookings', serviceBookingRoutes);
+router.use('/coupons', couponRoutes);
 
 export default router;

@@ -35,6 +35,11 @@ enum PaymentMethod {
   RAZORPAY
 }
 
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+}
+
 enum OtpPurpose {
   REGISTRATION
   LOGIN
@@ -200,6 +205,9 @@ model Order {
   taxPrice          Float
   shippingPrice     Float
   totalPrice        Float
+  discountPrice     Float           @default(0)
+  couponCode        String?
+  couponRedeemed    Boolean         @default(false)
   items             OrderItem[]
   payment           Payment?
   createdAt         DateTime        @default(now())
@@ -208,6 +216,22 @@ model Order {
   @@index([userId])
   @@index([orderStatus])
   @@index([createdAt])
+}
+
+model Coupon {
+  id          String       @id @default(uuid())
+  code        String       @unique
+  discountType DiscountType
+  discountValue Float
+  minimumSpend Float        @default(0)
+  usageLimit  Int?
+  usageCount  Int          @default(0)
+  validUntil  DateTime?
+  active      Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([active, validUntil])
 }
 
 model OrderItem {
@@ -219,6 +243,8 @@ model OrderItem {
   title     String
   price     Float
   quantity  Int
+  variantId String?
+  selectedAttributes Json?
   imageUrl  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -235,6 +261,8 @@ model Payment {
   method        PaymentMethod
   status        PaymentStatus @default(PENDING)
   transactionId String?
+  razorpayOrderId String?     @unique
+  razorpayPaymentId String?   @unique
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 }
@@ -281,4 +309,3 @@ model ServiceBooking {
   @@index([createdAt])
   @@index([userId])
 }
-
