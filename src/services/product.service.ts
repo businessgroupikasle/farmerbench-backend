@@ -4,6 +4,7 @@ import { reviewRepository } from '../repositories/review.repository';
 import { CreateProductInput, UpdateProductInput, ProductQueryInput, CreateReviewInput } from '@formerbench/shared';
 import { AppError } from '../utils/response';
 import { emitProductCreated, emitProductUpdated, emitProductDeleted } from '../socket';
+import { prisma } from '../config/database';
 
 export class ProductService {
   async getProducts(params: ProductQueryInput) {
@@ -23,7 +24,13 @@ export class ProductService {
       throw new AppError('Product not found', 404);
     }
 
-    return product;
+    return {
+      ...product,
+      numReviews: product.reviews?.length || 0,
+      rating: product.reviews?.length
+        ? Number((product.reviews.reduce((sum: number, review: any) => sum + review.rating, 0) / product.reviews.length).toFixed(1))
+        : 0,
+    };
   }
 
   async getFeaturedProducts(limit: number = 8) {
@@ -35,6 +42,7 @@ export class ProductService {
     if (!category) {
       throw new AppError('Category not found', 400);
     }
+    await this.validateSubcategory(input.categoryId, input.subcategoryId);
 
     const existingSlug = await productRepository.findBySlug(input.slug);
     if (existingSlug) {
@@ -51,6 +59,10 @@ export class ProductService {
     if (!existing) {
       throw new AppError('Product not found', 404);
     }
+    await this.validateSubcategory(
+      input.categoryId || existing.categoryId,
+      input.subcategoryId === undefined ? existing.subcategoryId : input.subcategoryId
+    );
 
     if (input.categoryId) {
       const category = await categoryRepository.findById(input.categoryId);
@@ -69,6 +81,15 @@ export class ProductService {
     const updated = await productRepository.update(id, input);
     emitProductUpdated(updated);
     return updated;
+  }
+
+  private async validateSubcategory(categoryId: string, subcategoryId?: string | null) {
+    if (!subcategoryId) return;
+    const subcategory = await prisma.subcategory.findUnique({ where: { id: subcategoryId } });
+    if (!subcategory || subcategory.categoryId !== categoryId) {
+      throw new AppError('Subcategory must belong to the selected category', 400);
+    }
+    if (!subcategory.isActive) throw new AppError('Subcategory is inactive', 400);
   }
 
   async deleteProduct(id: string) {

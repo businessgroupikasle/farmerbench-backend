@@ -5,11 +5,12 @@ export class CategoryRepository {
   async findAll() {
     return prisma.category.findMany({
       include: {
+        subcategories: { orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] },
         _count: {
-          select: { products: true },
+          select: { products: true, subcategories: true },
         },
       },
-      orderBy: { name: 'asc' },
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
     });
   }
 
@@ -17,8 +18,9 @@ export class CategoryRepository {
     return prisma.category.findUnique({
       where: { id },
       include: {
+        subcategories: { orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] },
         _count: {
-          select: { products: true },
+          select: { products: true, subcategories: true },
         },
       },
     });
@@ -28,8 +30,9 @@ export class CategoryRepository {
     return prisma.category.findUnique({
       where: { slug },
       include: {
+        subcategories: { orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] },
         _count: {
-          select: { products: true },
+          select: { products: true, subcategories: true },
         },
       },
     });
@@ -49,8 +52,9 @@ export class CategoryRepository {
   }
 
   async delete(id: string) {
-    return prisma.category.delete({
+    return prisma.category.update({
       where: { id },
+      data: { isActive: false },
     });
   }
 }

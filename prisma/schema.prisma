@@ -114,10 +114,39 @@ model Category {
   slug        String    @unique
   description String?
   imageUrl    String?
+  isActive    Boolean   @default(true)
+  sortOrder   Int       @default(0)
+  subcategories Subcategory[]
   products    Product[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
+  @@index([slug])
+}
+
+enum HeroPage {
+  HOME
+  ABOUT
+  SERVICES
+  PRODUCTS
+}
+
+model Subcategory {
+  id          String    @id @default(uuid())
+  categoryId  String
+  category    Category  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  name        String
+  slug        String    @unique
+  description String?
+  imageUrl    String?
+  isActive    Boolean   @default(true)
+  sortOrder   Int       @default(0)
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([categoryId, name])
+  @@index([categoryId, isActive, sortOrder])
   @@index([slug])
 }
 
@@ -136,6 +165,8 @@ model Product {
   attributes    Json?
   categoryId    String
   category      Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  subcategoryId String?
+  subcategory   Subcategory? @relation(fields: [subcategoryId], references: [id], onDelete: SetNull)
   cartItems     CartItem[]
   orderItems    OrderItem[]
   reviews       Review[]
@@ -143,6 +174,7 @@ model Product {
   updatedAt     DateTime    @updatedAt
 
   @@index([categoryId])
+  @@index([subcategoryId])
   @@index([featured])
   @@index([price])
   @@index([rating])
@@ -308,4 +340,34 @@ model ServiceBooking {
   @@index([phone])
   @@index([createdAt])
   @@index([userId])
+}
+
+
+model HeroBanner {
+  id                  String   @id @default(uuid())
+  page                HeroPage
+  title               String
+  highlightedText     String?
+  eyebrow             String?
+  description         String?  @db.Text
+  desktopImage        String
+  mobileImage         String?
+  imageAlt            String?
+  primaryButtonText   String?
+  primaryButtonLink   String?
+  secondaryButtonText String?
+  secondaryButtonLink String?
+  textAlignment       String   @default("left")
+  overlayColor        String   @default("#000000")
+  overlayOpacity      Float    @default(0.15)
+  isActive            Boolean  @default(true)
+  sortOrder           Int      @default(0)
+  autoplayDuration    Int      @default(5000)
+  startsAt            DateTime?
+  endsAt              DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([page, isActive, sortOrder])
+  @@index([startsAt, endsAt])
 }

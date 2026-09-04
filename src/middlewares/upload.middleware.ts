@@ -14,6 +14,7 @@ export const ALLOWED_UPLOAD_FOLDERS: Record<string, string> = {
   'products/gallery': 'products/gallery',
   'products': 'products',
   'categories': 'categories',
+  'banners': 'banners',
   'avatars': 'avatars',
 };
 
@@ -59,4 +60,3 @@ export const uploadImage = multer({
     fileSize: 10 * 1024 * 1024, // 10 MB maximum
   },
 });
-

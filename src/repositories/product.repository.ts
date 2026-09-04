@@ -9,6 +9,8 @@ export class ProductRepository {
       limit = 12,
       search,
       category,
+      categoryId,
+      subcategoryId,
       minPrice,
       maxPrice,
       minRating,
@@ -36,6 +38,8 @@ export class ProductRepository {
         ],
       };
     }
+    if (categoryId) where.categoryId = categoryId;
+    if (subcategoryId) where.subcategoryId = subcategoryId;
 
     if (minPrice !== undefined || maxPrice !== undefined) {
       where.price = {};
@@ -62,6 +66,8 @@ export class ProductRepository {
         where,
         include: {
           category: true,
+          subcategory: true,
+          reviews: { select: { rating: true } },
         },
         orderBy,
         skip,
@@ -71,7 +77,14 @@ export class ProductRepository {
     ]);
 
     return {
-      products,
+      products: products.map((product) => ({
+        ...product,
+        numReviews: product.reviews.length,
+        rating: product.reviews.length
+          ? Number((product.reviews.reduce((sum, review) => sum + review.rating, 0) / product.reviews.length).toFixed(1))
+          : 0,
+        reviews: undefined,
+      })),
       total,
       page,
       limit,
@@ -86,6 +99,7 @@ export class ProductRepository {
       where: { id },
       include: {
         category: true,
+        subcategory: true,
         reviews: {
           include: {
             user: {
@@ -103,6 +117,7 @@ export class ProductRepository {
       where: { slug },
       include: {
         category: true,
+        subcategory: true,
         reviews: {
           include: {
             user: {
@@ -116,14 +131,22 @@ export class ProductRepository {
   }
 
   async findFeatured(limit: number = 8) {
-    return prisma.product.findMany({
+    const products = await prisma.product.findMany({
       where: { featured: true },
       include: {
         category: true,
+        subcategory: true,
+        reviews: { select: { rating: true } },
       },
       take: limit,
       orderBy: { createdAt: 'desc' },
     });
+    return products.map((product) => ({
+      ...product,
+      numReviews: product.reviews.length,
+      rating: product.reviews.length ? Number((product.reviews.reduce((sum, review) => sum + review.rating, 0) / product.reviews.length).toFixed(1)) : 0,
+      reviews: undefined,
+    }));
   }
 
   async create(data: CreateProductInput) {
@@ -139,9 +162,11 @@ export class ProductRepository {
         images: data.images,
         attributes: data.attributes || undefined,
         categoryId: data.categoryId,
+        subcategoryId: data.subcategoryId,
       },
       include: {
         category: true,
+        subcategory: true,
       },
     });
   }
@@ -155,6 +180,7 @@ export class ProductRepository {
       },
       include: {
         category: true,
+        subcategory: true,
       },
     });
   }

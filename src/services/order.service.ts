@@ -43,7 +43,10 @@ export class OrderService {
           Boolean(item.variantId) && [v.id, v.variantId, v.sku].includes(item.variantId)
         ) || (packSize ? variants.find((v) => (v.label || v.packSize) === packSize) : null);
 
-        if ((item.variantId || packSize) && !matchedVariant) {
+        // Products created before variant inventory was introduced may expose only
+        // attributes.packSizes. They use the product's authoritative price/stock.
+        // Reject a missing selection only when persisted variants actually exist.
+        if (variants.length > 0 && (item.variantId || packSize) && !matchedVariant) {
           throw new AppError(`Selected variant is no longer available for "${product.title}".`, 400);
         }
 
@@ -106,7 +109,7 @@ export class OrderService {
           Boolean(requestedVariantId) && [v.id, v.variantId, v.sku].includes(requestedVariantId)
         ) || (packSize ? variants.find((v) => (v.label || v.packSize) === packSize) : null);
 
-        if ((requestedVariantId || packSize) && !matchedVariant) {
+        if (variants.length > 0 && (requestedVariantId || packSize) && !matchedVariant) {
           throw new AppError(`Selected variant is no longer available for "${item.product.title}".`, 400);
         }
 

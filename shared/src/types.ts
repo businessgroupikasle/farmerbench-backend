@@ -80,11 +80,30 @@ export interface Category {
   slug: string;
   description?: string | null;
   imageUrl?: string | null;
+  isActive: boolean;
+  sortOrder: number;
+  subcategories?: Subcategory[];
   createdAt: string | Date;
   updatedAt: string | Date;
   _count?: {
     products?: number;
+    subcategories?: number;
   };
+}
+
+export interface Subcategory {
+  id: string;
+  categoryId: string;
+  category?: Category;
+  name: string;
+  slug: string;
+  description?: string | null;
+  imageUrl?: string | null;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+  _count?: { products?: number };
 }
 
 // Product
@@ -103,6 +122,8 @@ export interface Product {
   attributes?: Record<string, any> | null;
   categoryId: string;
   category?: Category;
+  subcategoryId?: string | null;
+  subcategory?: Subcategory | null;
   reviews?: Review[];
   createdAt: string | Date;
   updatedAt: string | Date;
@@ -242,6 +263,8 @@ export interface ProductQueryParams {
   limit?: number;
   search?: string;
   category?: string;
+  categoryId?: string;
+  subcategoryId?: string;
   minPrice?: number;
   maxPrice?: number;
   minRating?: number;
@@ -256,6 +279,34 @@ export type BookingStatus =
   | 'IN_PROGRESS'
   | 'COMPLETED'
   | 'CANCELLED';
+
+export type HeroPage = 'HOME' | 'ABOUT' | 'SERVICES' | 'PRODUCTS';
+
+export interface HeroBanner {
+  id: string;
+  page: HeroPage;
+  title: string;
+  highlightedText?: string | null;
+  eyebrow?: string | null;
+  description?: string | null;
+  desktopImage: string;
+  mobileImage?: string | null;
+  imageAlt?: string | null;
+  primaryButtonText?: string | null;
+  primaryButtonLink?: string | null;
+  secondaryButtonText?: string | null;
+  secondaryButtonLink?: string | null;
+  textAlignment: string;
+  overlayColor: string;
+  overlayOpacity: number;
+  isActive: boolean;
+  sortOrder: number;
+  autoplayDuration: number;
+  startsAt?: string | Date | null;
+  endsAt?: string | Date | null;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+}
 
 export interface ServiceBooking {
   id: string;

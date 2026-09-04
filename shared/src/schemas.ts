@@ -136,9 +136,49 @@ export const CreateCategorySchema = z.object({
   slug: z.string().min(2, 'Slug must be at least 2 characters'),
   description: z.string().optional(),
   imageUrl: z.string().url('Invalid image URL').optional(),
+  isActive: z.boolean().default(true),
+  sortOrder: z.number().int().nonnegative().default(0),
 });
 
 export const UpdateCategorySchema = CreateCategorySchema.partial();
+
+export const CreateSubcategorySchema = z.object({
+  categoryId: z.string().uuid('Invalid category ID'),
+  name: z.string().min(2, 'Name must be at least 2 characters'),
+  slug: z.string().min(2, 'Slug must be at least 2 characters'),
+  description: z.string().optional(),
+  imageUrl: z.string().url('Invalid image URL').optional(),
+  isActive: z.boolean().default(true),
+  sortOrder: z.number().int().nonnegative().default(0),
+});
+
+export const UpdateSubcategorySchema = CreateSubcategorySchema.partial();
+
+export const HeroPageSchema = z.enum(['HOME', 'ABOUT', 'SERVICES', 'PRODUCTS']);
+export const CreateHeroBannerSchema = z.object({
+  page: HeroPageSchema,
+  title: z.string().min(1),
+  highlightedText: z.string().optional().nullable(),
+  eyebrow: z.string().optional().nullable(),
+  description: z.string().optional().nullable(),
+  desktopImage: z.string().min(1),
+  mobileImage: z.string().optional().nullable(),
+  imageAlt: z.string().optional().nullable(),
+  primaryButtonText: z.string().optional().nullable(),
+  primaryButtonLink: z.string().optional().nullable(),
+  secondaryButtonText: z.string().optional().nullable(),
+  secondaryButtonLink: z.string().optional().nullable(),
+  textAlignment: z.enum(['left', 'center', 'right']).default('left'),
+  overlayColor: z.string().default('#000000'),
+  overlayOpacity: z.number().min(0).max(1).default(0.15),
+  isActive: z.boolean().default(true),
+  sortOrder: z.number().int().nonnegative().default(0),
+  autoplayDuration: z.number().int().min(2000).max(30000).default(5000),
+  startsAt: z.coerce.date().optional().nullable(),
+  endsAt: z.coerce.date().optional().nullable(),
+});
+export const UpdateHeroBannerSchema = CreateHeroBannerSchema.partial();
+export const ReorderHeroBannersSchema = z.object({ ids: z.array(z.string().uuid()).min(1) });
 
 // ============================================================================
 // PRODUCT SCHEMAS
@@ -155,6 +195,7 @@ export const CreateProductSchema = z.object({
   images: z.array(z.string().url('Invalid image URL')).min(1, 'At least one image is required'),
   attributes: z.record(z.any()).optional().nullable(),
   categoryId: z.string().uuid('Invalid category ID'),
+  subcategoryId: z.string().uuid('Invalid subcategory ID').optional().nullable(),
 });
 
 export const UpdateProductSchema = CreateProductSchema.partial();
@@ -164,6 +205,8 @@ export const ProductQuerySchema = z.object({
   limit: z.coerce.number().int().positive().max(100).default(12),
   search: z.string().optional(),
   category: z.string().optional(),
+  categoryId: z.string().uuid('Invalid category ID').optional(),
+  subcategoryId: z.string().uuid('Invalid subcategory ID').optional(),
   minPrice: z.coerce.number().positive().optional(),
   maxPrice: z.coerce.number().positive().optional(),
   minRating: z.coerce.number().min(0).max(5).optional(),
@@ -316,6 +359,10 @@ export type TestSmtpInput = z.infer<typeof TestSmtpSchema>;
 
 export type CreateCategoryInput = z.infer<typeof CreateCategorySchema>;
 export type UpdateCategoryInput = z.infer<typeof UpdateCategorySchema>;
+export type CreateSubcategoryInput = z.infer<typeof CreateSubcategorySchema>;
+export type UpdateSubcategoryInput = z.infer<typeof UpdateSubcategorySchema>;
+export type CreateHeroBannerInput = z.infer<typeof CreateHeroBannerSchema>;
+export type UpdateHeroBannerInput = z.infer<typeof UpdateHeroBannerSchema>;
 
 export type CreateProductInput = z.infer<typeof CreateProductSchema>;
 export type UpdateProductInput = z.infer<typeof UpdateProductSchema>;
