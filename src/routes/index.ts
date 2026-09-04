@@ -10,6 +10,7 @@ import paymentRoutes from './payment.routes';
 import serviceBookingRoutes from './serviceBooking.routes';
 import reviewRoutes from './review.routes';
 import couponRoutes from './coupon.routes';
+import marketPriceRoutes from './marketPrice.routes';
 
 const router = Router();
 
@@ -24,5 +25,6 @@ router.use('/upload', uploadRoutes);
 router.use('/payments', paymentRoutes);
 router.use('/service-bookings', serviceBookingRoutes);
 router.use('/coupons', couponRoutes);
+router.use('/market-prices', marketPriceRoutes);
 
 export default router;

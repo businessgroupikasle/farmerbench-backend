@@ -31,6 +31,9 @@ const envSchema = z.object({
   RAZORPAY_KEY_SECRET: z.string().optional().default('rzp_test_demo_secret'),
   RAZORPAY_WEBHOOK_SECRET: z.string().optional().default(''),
 
+  // Daily Market Price API
+  MARKET_PRICE_API_KEY: z.string().optional().default(''),
+
   // Upload Configuration
   UPLOAD_DIR: z.string().default('uploads'),
 });
