@@ -13,6 +13,7 @@ import reviewRoutes from './review.routes';
 import couponRoutes from './coupon.routes';
 import marketPriceRoutes from './marketPrice.routes';
 import heroBannerRoutes from './heroBanner.routes';
+import postalCodeRoutes from './postalCode.routes';
 
 const router = Router();
 
@@ -30,5 +31,6 @@ router.use('/service-bookings', serviceBookingRoutes);
 router.use('/coupons', couponRoutes);
 router.use('/market-prices', marketPriceRoutes);
 router.use('/hero-banners', heroBannerRoutes);
+router.use('/postal-codes', postalCodeRoutes);
 
 export default router;

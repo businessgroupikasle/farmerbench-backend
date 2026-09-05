@@ -34,6 +34,10 @@ const envSchema = z.object({
   // Daily Market Price API
   MARKET_PRICE_API_KEY: z.string().optional().default(''),
 
+  // Postal Code API (server-side only)
+  POSTAL_CODE_API_KEY: z.string().optional().default(''),
+  POSTAL_CODE_API_RESOURCE_ID: z.string().default('04cbe4b1-2f2b-4c39-a1d5-1c2e28bc0e32'),
+
   // Upload Configuration
   UPLOAD_DIR: z.string().default('uploads'),
 });
