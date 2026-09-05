@@ -14,6 +14,7 @@ import couponRoutes from './coupon.routes';
 import marketPriceRoutes from './marketPrice.routes';
 import heroBannerRoutes from './heroBanner.routes';
 import postalCodeRoutes from './postalCode.routes';
+import chatRoutes from './chat.routes';
 
 const router = Router();
 
@@ -32,5 +33,6 @@ router.use('/coupons', couponRoutes);
 router.use('/market-prices', marketPriceRoutes);
 router.use('/hero-banners', heroBannerRoutes);
 router.use('/postal-codes', postalCodeRoutes);
+router.use('/chat', chatRoutes);
 
 export default router;

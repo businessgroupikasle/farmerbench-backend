@@ -40,6 +40,11 @@ const envSchema = z.object({
 
   // Upload Configuration
   UPLOAD_DIR: z.string().default('uploads'),
+
+  // AI Chatbot Configuration
+  AI_PROVIDER: z.enum(['gemini', 'openai', 'groq', 'mock']).default('gemini'),
+  AI_API_KEY: z.string().optional().default(''),
+  AI_MODEL: z.string().default('gemini-1.5-flash'),
 });
 
 const parseEnv = () => {
