@@ -13,6 +13,7 @@
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
+    "db:seed:products": "tsx prisma/seed-products.ts",
     "db:seed:catalog": "tsx prisma/seed-catalog.ts",
     "db:seed:heroes": "tsx prisma/seed-hero-banners.ts",
     "db:studio": "prisma studio",
