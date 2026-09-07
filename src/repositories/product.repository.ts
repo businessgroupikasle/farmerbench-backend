@@ -10,6 +10,7 @@ export class ProductRepository {
       search,
       category,
       categoryId,
+      subcategory,
       subcategoryId,
       minPrice,
       maxPrice,
@@ -39,6 +40,15 @@ export class ProductRepository {
       };
     }
     if (categoryId) where.categoryId = categoryId;
+    if (subcategory) {
+      where.subcategory = {
+        OR: [
+          { slug: subcategory },
+          { id: subcategory },
+          { name: { contains: subcategory, mode: 'insensitive' } },
+        ],
+      };
+    }
     if (subcategoryId) where.subcategoryId = subcategoryId;
 
     if (minPrice !== undefined || maxPrice !== undefined) {

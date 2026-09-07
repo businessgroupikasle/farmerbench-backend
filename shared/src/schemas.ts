@@ -206,12 +206,13 @@ export const ProductQuerySchema = z.object({
   search: z.string().optional(),
   category: z.string().optional(),
   categoryId: z.string().uuid('Invalid category ID').optional(),
+  subcategory: z.string().optional(),
   subcategoryId: z.string().uuid('Invalid subcategory ID').optional(),
   minPrice: z.coerce.number().positive().optional(),
   maxPrice: z.coerce.number().positive().optional(),
   minRating: z.coerce.number().min(0).max(5).optional(),
   sortBy: z.enum(['newest', 'price_asc', 'price_desc', 'rating', 'popular']).default('newest'),
-  featured: z.preprocess((val) => val === 'true' || val === true, z.boolean().optional()),
+  featured: z.preprocess((val) => (val === undefined || val === '' ? undefined : val === 'true' || val === true), z.boolean().optional()),
 });
 
 // ============================================================================
@@ -335,6 +336,41 @@ export const ServiceBookingQuerySchema = z.object({
 });
 
 // ============================================================================
+// BLOG SCHEMAS
+// ============================================================================
+
+export const BlogStatusSchema = z.enum(['PUBLISHED', 'DRAFT', 'ARCHIVED']);
+
+export const CreateBlogSchema = z.object({
+  title: z.string().min(2, 'Title must be at least 2 characters'),
+  slug: z.string().optional(),
+  excerpt: z.string().optional(),
+  content: z.string().min(1, 'Content is required'),
+  featuredImage: z.string().url('Invalid image URL').optional(),
+  author: z.string().optional(),
+  authorAvatar: z.string().optional().nullable(),
+  authorBio: z.string().optional().nullable(),
+  category: z.string().min(1, 'Category is required'),
+  tags: z.array(z.string()).optional(),
+  status: BlogStatusSchema.default('PUBLISHED'),
+  readingTime: z.string().optional(),
+  metaTitle: z.string().optional().nullable(),
+  metaDescription: z.string().optional().nullable(),
+});
+
+export const UpdateBlogSchema = CreateBlogSchema.partial();
+
+export const BlogQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(100).default(12),
+  search: z.string().optional(),
+  category: z.string().optional(),
+  tag: z.string().optional(),
+  status: z.union([BlogStatusSchema, z.literal('ALL')]).optional(),
+  sortBy: z.enum(['newest', 'popular', 'oldest']).default('newest'),
+});
+
+// ============================================================================
 // TYPE INFERENCES
 // ============================================================================
 
@@ -383,3 +419,8 @@ export type CreateReviewInput = z.infer<typeof CreateReviewSchema>;
 export type CreateServiceBookingInput = z.infer<typeof CreateServiceBookingSchema>;
 export type UpdateServiceBookingStatusInput = z.infer<typeof UpdateServiceBookingStatusSchema>;
 export type ServiceBookingQueryInput = z.infer<typeof ServiceBookingQuerySchema>;
+
+export type CreateBlogSchemaInput = z.infer<typeof CreateBlogSchema>;
+export type UpdateBlogSchemaInput = z.infer<typeof UpdateBlogSchema>;
+export type BlogQuerySchemaInput = z.infer<typeof BlogQuerySchema>;
+

@@ -4,7 +4,8 @@ const prisma = new PrismaClient();
 
 const products = [
   {
-    category: { name: 'Bio Stimulants', slug: 'bio-stimulants' },
+    categorySlug: 'organic-farming',
+    subcategorySlug: 'bio-stimulants',
     title: 'Growth Booster for All Crops 500ml',
     slug: 'growth-booster-all-crops',
     description: 'Organic seaweed and amino-acid bio-stimulant that supports stronger roots, flowering, fruit set, and crop resilience.',
@@ -16,7 +17,8 @@ const products = [
     attributes: { packSizes: ['250 ml', '500 ml', '1 L'], dosage: '2.5 ml per litre of water' },
   },
   {
-    category: { name: 'Bio Pesticides', slug: 'bio-pesticides' },
+    categorySlug: 'organic-farming',
+    subcategorySlug: 'bio-pesticides',
     title: 'Neem Oil 100% Cold Pressed 1L',
     slug: 'neem-oil-cold-pressed',
     description: 'Cold-pressed neem oil formulated for natural protection against sucking and chewing insect pests.',
@@ -28,7 +30,8 @@ const products = [
     attributes: { packSizes: ['250 ml', '500 ml', '1 L'], dosage: '3-5 ml per litre of water' },
   },
   {
-    category: { name: 'Bio Fertilizers', slug: 'bio-fertilizers' },
+    categorySlug: 'organic-farming',
+    subcategorySlug: 'bio-fertilizers',
     title: 'Humic Power Soil Conditioner 1kg',
     slug: 'humic-power-soil-conditioner',
     description: 'Water-soluble potassium humate flakes that improve soil structure, nutrient uptake, and root development.',
@@ -40,7 +43,8 @@ const products = [
     attributes: { packSizes: ['500 g', '1 kg', '5 kg'], dosage: '1 kg per acre' },
   },
   {
-    category: { name: 'Crop Nutrition', slug: 'crop-nutrition' },
+    categorySlug: 'chemical',
+    subcategorySlug: null,
     title: 'Chelated Micronutrient Fertilizer 1kg',
     slug: 'chelated-micronutrient-fertilizer',
     description: 'Balanced EDTA-chelated zinc, iron, boron, manganese, copper, and molybdenum for rapid nutrient correction.',
@@ -52,7 +56,8 @@ const products = [
     attributes: { packSizes: ['500 g', '1 kg', '5 kg'], dosage: '1.5 g per litre of water' },
   },
   {
-    category: { name: 'Seeds', slug: 'seeds' },
+    categorySlug: 'seeds',
+    subcategorySlug: 'field-crops',
     title: 'Certified Organic Paddy Seeds (BPT-5204) 10kg',
     slug: 'certified-organic-paddy-seeds-bpt-5204',
     description: 'Foundation-grade Samba Mahsuri paddy seed with high germination, fine grain quality, and blast tolerance.',
@@ -66,17 +71,23 @@ const products = [
 ] as const;
 
 async function main() {
-  for (const { category, ...product } of products) {
-    const savedCategory = await prisma.category.upsert({
-      where: { slug: category.slug },
-      update: { name: category.name },
-      create: category,
-    });
+  for (const { categorySlug, subcategorySlug, ...product } of products) {
+    const category = await prisma.category.findUnique({ where: { slug: categorySlug } });
+    if (!category) {
+      console.warn(`Skipping product ${product.slug}: Category ${categorySlug} not found.`);
+      continue;
+    }
+
+    let subcategoryId: string | null = null;
+    if (subcategorySlug) {
+      const subcategory = await prisma.subcategory.findUnique({ where: { slug: subcategorySlug } });
+      if (subcategory) subcategoryId = subcategory.id;
+    }
 
     await prisma.product.upsert({
       where: { slug: product.slug },
-      update: { ...product, categoryId: savedCategory.id },
-      create: { ...product, categoryId: savedCategory.id },
+      update: { ...product, categoryId: category.id, subcategoryId },
+      create: { ...product, categoryId: category.id, subcategoryId },
     });
   }
 

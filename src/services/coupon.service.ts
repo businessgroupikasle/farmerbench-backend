@@ -6,12 +6,26 @@ export class CouponService {
     return prisma.coupon.findMany({ orderBy: { createdAt: 'desc' } });
   }
 
-  async create(data: { code: string; discountType: 'PERCENTAGE' | 'FIXED'; discountValue: number; minimumSpend?: number; usageLimit?: number; validUntil?: string }) {
+  async getHomepageOffer() {
+    return (prisma.coupon as any).findFirst({
+      where: {
+        active: true,
+        showOnHomepage: true,
+        OR: [{ validUntil: null }, { validUntil: { gte: new Date() } }],
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+  }
+
+  async create(data: { code: string; discountType: 'PERCENTAGE' | 'FIXED'; discountValue: number; minimumSpend?: number; usageLimit?: number; validUntil?: string; showOnHomepage?: boolean }) {
     const code = data.code.trim().toUpperCase();
     if (data.discountValue <= 0 || (data.discountType === 'PERCENTAGE' && data.discountValue > 100)) {
       throw new AppError('Enter a valid discount value', 400);
     }
-    return prisma.coupon.create({
+    if (data.showOnHomepage) {
+      await (prisma.coupon as any).updateMany({ data: { showOnHomepage: false } });
+    }
+    return (prisma.coupon as any).create({
       data: {
         code,
         discountType: data.discountType,
@@ -19,6 +33,21 @@ export class CouponService {
         minimumSpend: Math.max(0, data.minimumSpend || 0),
         usageLimit: data.usageLimit && data.usageLimit > 0 ? data.usageLimit : null,
         validUntil: data.validUntil ? new Date(data.validUntil) : null,
+        showOnHomepage: Boolean(data.showOnHomepage),
+      },
+    });
+  }
+
+  async update(id: string, data: { active?: boolean; showOnHomepage?: boolean }) {
+    const couponModel = prisma.coupon as any;
+    if (data.showOnHomepage) {
+      await couponModel.updateMany({ where: { id: { not: id } }, data: { showOnHomepage: false } });
+    }
+    return couponModel.update({
+      where: { id },
+      data: {
+        ...(typeof data.active === 'boolean' ? { active: data.active } : {}),
+        ...(typeof data.showOnHomepage === 'boolean' ? { showOnHomepage: data.showOnHomepage } : {}),
       },
     });
   }

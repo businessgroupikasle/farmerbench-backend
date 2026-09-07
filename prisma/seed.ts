@@ -15,7 +15,9 @@ async function main() {
   await prisma.shippingAddress.deleteMany();
   await prisma.cartItem.deleteMany();
   await prisma.cart.deleteMany();
+  await prisma.blog.deleteMany();
   await prisma.product.deleteMany();
+  await prisma.subcategory.deleteMany();
   await prisma.category.deleteMany();
   await prisma.user.deleteMany();
 
@@ -41,60 +43,106 @@ async function main() {
 
   console.log('👑 Created Super Admin (admin@formerbench.dev).');
 
-  // 3. Create Authentic FarmerBench Categories
-  const categories = await Promise.all([
-    prisma.category.create({
-      data: {
-        name: 'Bio Stimulants',
-        slug: 'bio-stimulants',
-        description: 'Plant growth activators, microbial extracts, and botanical bio-stimulants.',
-        imageUrl: 'https://images.unsplash.com/photo-1574943320219-553eb213f72d?w=800&auto=format&fit=crop&q=80',
-      },
-    }),
-    prisma.category.create({
-      data: {
-        name: 'Bio Fertilizers',
-        slug: 'bio-fertilizers',
-        description: '100% natural organic humic conditioners, amino acids, and micronutrients.',
-        imageUrl: 'https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=800&auto=format&fit=crop&q=80',
-      },
-    }),
-    prisma.category.create({
-      data: {
-        name: 'Bio Pesticides',
-        slug: 'bio-pesticides',
-        description: 'Cold-pressed botanical neem oils and beneficial biological disease shields.',
-        imageUrl: 'https://images.unsplash.com/photo-1592417817098-8f3d69109853?w=800&auto=format&fit=crop&q=80',
-      },
-    }),
-    prisma.category.create({
-      data: {
-        name: 'Crop Nutrition',
-        slug: 'crop-nutrition',
-        description: 'Chelated multi-micronutrients, seaweed marine minerals, and soil revitalizers.',
-        imageUrl: 'https://images.unsplash.com/photo-1530507629858-e4977d30e9e0?w=800&auto=format&fit=crop&q=80',
-      },
-    }),
-    prisma.category.create({
-      data: {
-        name: 'Seeds',
-        slug: 'seeds',
-        description: 'High-viability foundation paddy, pulses, and organic vegetable seed stocks.',
-        imageUrl: 'https://images.unsplash.com/photo-1536657464919-892534f60d6e?w=800&auto=format&fit=crop&q=80',
-      },
-    }),
-    prisma.category.create({
-      data: {
-        name: 'Tools & Equipment',
-        slug: 'tools-equipment',
-        description: 'Agricultural sprayers, soil testing kits, and smart irrigation instruments.',
-        imageUrl: 'https://images.unsplash.com/photo-1589923188900-85dae523342b?w=800&auto=format&fit=crop&q=80',
-      },
-    }),
-  ]);
+  // 3. Create the admin catalog category and subcategory hierarchy
+  const categorySeedData = [
+    {
+      name: 'organic farming',
+      slug: 'organic-farming',
+      description: 'Organic farming inputs, bio fertilizers, fungicides, pesticides, and stimulants.',
+      imageUrl: 'https://images.unsplash.com/photo-1574943320219-553eb213f72d?w=800&auto=format&fit=crop&q=80',
+      subcategories: [
+        ['Bio fertilizers', 'bio-fertilizers'],
+        ['Bio fungicides', 'bio-fungicides'],
+        ['Bio pesticides', 'bio-pesticides'],
+        ['Bio stimulants', 'bio-stimulants'],
+      ],
+    },
+    {
+      name: 'chemical',
+      slug: 'chemical',
+      description: 'Chemical crop solutions and agricultural chemicals.',
+      imageUrl: 'https://images.unsplash.com/photo-1530507629858-e4977d30e9e0?w=800&auto=format&fit=crop&q=80',
+      subcategories: [],
+    },
+    {
+      name: 'traps',
+      slug: 'traps',
+      description: 'Agricultural pest control traps including pheromone, sticky, and light traps.',
+      imageUrl: 'https://images.unsplash.com/photo-1592417817098-8f3d69109853?w=800&auto=format&fit=crop&q=80',
+      subcategories: [
+        ['Pheromone trap', 'pheromone-trap'],
+        ['Sticky traps', 'sticky-traps'],
+        ['Light traps', 'light-traps'],
+      ],
+    },
+    {
+      name: 'seedlings',
+      slug: 'seedlings',
+      description: 'Horticultural and plantation seedlings, tissue culture plants, and fruit trees.',
+      imageUrl: 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=800&auto=format&fit=crop&q=80',
+      subcategories: [
+        ['Papaya', 'papaya'],
+        ['Tissue culture banana', 'tissue-culture-banana'],
+        ['Tuber banana', 'tuber-banana'],
+        ['Watermelon', 'watermelon'],
+        ['Muskmelon', 'muskmelon'],
+        ['Fruit trees', 'fruit-trees'],
+        ['Coconut', 'coconut'],
+        ['Arecanut', 'arecanut'],
+        ['Pepper', 'pepper'],
+        ['Others', 'others'],
+      ],
+    },
+    {
+      name: 'Seeds',
+      slug: 'seeds',
+      description: 'High-viability certified seeds for horticulture and field crops.',
+      imageUrl: 'https://images.unsplash.com/photo-1536657464919-892534f60d6e?w=800&auto=format&fit=crop&q=80',
+      subcategories: [
+        ['Horticulture Crops', 'horticulture-crops'],
+        ['Field Crops', 'field-crops'],
+      ],
+    },
+    {
+      name: 'Farm equipment',
+      slug: 'farm-equipment',
+      description: 'Modern agricultural machinery, implements, and farm equipment.',
+      imageUrl: 'https://images.unsplash.com/photo-1589923188900-85dae523342b?w=800&auto=format&fit=crop&q=80',
+      subcategories: [],
+    },
+  ] as const;
 
-  const [bioStimulants, fertilizers, bioPesticides, cropNutrition, seeds, tools] = categories;
-  console.log(`📦 Seeded ${categories.length} agricultural categories.`);
+  const categoryMap = new Map<string, any>();
+  const subcategoryMap = new Map<string, any>();
+
+  for (const [sortOrder, item] of categorySeedData.entries()) {
+    const category = await prisma.category.create({
+      data: {
+        name: item.name,
+        slug: item.slug,
+        description: item.description,
+        imageUrl: item.imageUrl,
+        sortOrder,
+        isActive: true,
+      },
+    });
+    categoryMap.set(item.slug, category);
+
+    for (const [childSortOrder, [name, slug]] of item.subcategories.entries()) {
+      const subcategory = await prisma.subcategory.create({
+        data: {
+          categoryId: category.id,
+          name,
+          slug,
+          sortOrder: childSortOrder,
+          isActive: true,
+        },
+      });
+      subcategoryMap.set(slug, subcategory);
+    }
+  }
+
+  console.log(`Seeded ${categoryMap.size} agricultural categories and ${subcategoryMap.size} subcategories.`);
 
   // 4. Create Authentic FarmerBench Agricultural Products
   const products = [
@@ -108,7 +156,8 @@ async function main() {
       rating: 0,
       numReviews: 0,
       featured: true,
-      categoryId: bioStimulants.id,
+      categoryId: categoryMap.get('organic-farming')!.id,
+      subcategoryId: subcategoryMap.get('bio-stimulants')!.id,
       images: [
         'https://images.unsplash.com/photo-1574943320219-553eb213f72d?w=800&auto=format&fit=crop&q=80',
         'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=800&auto=format&fit=crop&q=80',
@@ -170,7 +219,8 @@ async function main() {
       rating: 0,
       numReviews: 0,
       featured: true,
-      categoryId: bioPesticides.id,
+      categoryId: categoryMap.get('organic-farming')!.id,
+      subcategoryId: subcategoryMap.get('bio-pesticides')!.id,
       images: [
         'https://images.unsplash.com/photo-1592417817098-8f3d69109853?w=800&auto=format&fit=crop&q=80',
         'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=800&auto=format&fit=crop&q=80',
@@ -221,7 +271,8 @@ async function main() {
       rating: 0,
       numReviews: 0,
       featured: true,
-      categoryId: fertilizers.id,
+      categoryId: categoryMap.get('organic-farming')!.id,
+      subcategoryId: subcategoryMap.get('bio-fertilizers')!.id,
       images: [
         'https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=800&auto=format&fit=crop&q=80',
       ],
@@ -270,7 +321,8 @@ async function main() {
       rating: 0,
       numReviews: 0,
       featured: true,
-      categoryId: bioStimulants.id,
+      categoryId: categoryMap.get('organic-farming')!.id,
+      subcategoryId: subcategoryMap.get('bio-stimulants')!.id,
       images: [
         'https://images.unsplash.com/photo-1574943320219-553eb213f72d?w=800&auto=format&fit=crop&q=80',
       ],
@@ -309,7 +361,8 @@ async function main() {
       rating: 0,
       numReviews: 0,
       featured: false,
-      categoryId: bioPesticides.id,
+      categoryId: categoryMap.get('organic-farming')!.id,
+      subcategoryId: subcategoryMap.get('bio-fungicides')!.id,
       images: [
         'https://images.unsplash.com/photo-1592417817098-8f3d69109853?w=800&auto=format&fit=crop&q=80',
       ],
@@ -348,7 +401,8 @@ async function main() {
       rating: 0,
       numReviews: 0,
       featured: false,
-      categoryId: bioStimulants.id,
+      categoryId: categoryMap.get('organic-farming')!.id,
+      subcategoryId: subcategoryMap.get('bio-stimulants')!.id,
       images: [
         'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?w=800&auto=format&fit=crop&q=80',
       ],
@@ -386,7 +440,8 @@ async function main() {
       rating: 0,
       numReviews: 0,
       featured: false,
-      categoryId: cropNutrition.id,
+      categoryId: categoryMap.get('chemical')!.id,
+      subcategoryId: null,
       images: [
         'https://images.unsplash.com/photo-1530507629858-e4977d30e9e0?w=800&auto=format&fit=crop&q=80',
       ],
@@ -424,7 +479,8 @@ async function main() {
       rating: 0,
       numReviews: 0,
       featured: true,
-      categoryId: seeds.id,
+      categoryId: categoryMap.get('seeds')!.id,
+      subcategoryId: subcategoryMap.get('field-crops')!.id,
       images: [
         'https://images.unsplash.com/photo-1536657464919-892534f60d6e?w=800&auto=format&fit=crop&q=80',
       ],
@@ -453,6 +509,153 @@ async function main() {
         faqs: [{ question: 'What is the duration of this variety?', answer: '145 to 150 days (Medium duration).' }],
       },
     },
+    {
+      title: 'Pheromone Trap for Fall Armyworm & Stem Borer',
+      slug: 'pheromone-trap-fall-armyworm',
+      description: 'UV-stabilized funnel pheromone trap equipped with species-specific high-attraction lure for maize fall armyworm and paddy stem borer monitoring and mass trapping.',
+      price: 320.0,
+      discountPrice: 280.0,
+      stock: 50,
+      rating: 0,
+      numReviews: 0,
+      featured: true,
+      categoryId: categoryMap.get('traps')!.id,
+      subcategoryId: subcategoryMap.get('pheromone-trap')!.id,
+      images: [
+        'https://images.unsplash.com/photo-1592417817098-8f3d69109853?w=800&auto=format&fit=crop&q=80',
+      ],
+      attributes: {
+        features: [
+          'UV-Stabilized All-Weather Polypropylene',
+          'High-Potency 90-Day Attractant Lure Included',
+          'Zero Chemical Contact with Food Crops',
+        ],
+        packSizes: ['1 Unit', '5 Units', '10 Units'],
+        benefits: ['Early warning pest detection.', 'Reduces pest population non-toxically.'],
+        specifications: [
+          { label: 'Product Type', value: 'Pheromone Trap' },
+          { label: 'Target Pests', value: 'Fall Armyworm, Spodoptera, Stem Borer' },
+          { label: 'Lure Duration', value: '90 Days' },
+        ],
+      },
+    },
+    {
+      title: 'Yellow & Blue Sticky Traps (Pack of 20)',
+      slug: 'yellow-blue-sticky-traps-pack-20',
+      description: 'Double-sided waterproof adhesive insect sheets engineered with specific optical spectrum to attract whiteflies, thrips, aphids, and leaf miners in open fields and greenhouses.',
+      price: 260.0,
+      discountPrice: 220.0,
+      stock: 75,
+      rating: 0,
+      numReviews: 0,
+      featured: false,
+      categoryId: categoryMap.get('traps')!.id,
+      subcategoryId: subcategoryMap.get('sticky-traps')!.id,
+      images: [
+        'https://images.unsplash.com/photo-1589923188900-85dae523342b?w=800&auto=format&fit=crop&q=80',
+      ],
+      attributes: {
+        features: [
+          'Double-Sided Non-Drying Optical Adhesive',
+          'Rain and Sun Heat Resistant',
+          'Safe for Beneficial Pollinators',
+        ],
+        packSizes: ['Pack of 20', 'Pack of 50'],
+        benefits: ['Continuous round-the-clock pest catching.', 'Chemical-free crop security.'],
+        specifications: [
+          { label: 'Product Type', value: 'Sticky Insect Traps' },
+          { label: 'Pack Size', value: '10 Yellow + 10 Blue' },
+        ],
+      },
+    },
+    {
+      title: 'Papaya Taiwan 786 Red Lady Seedlings (Tray of 104)',
+      slug: 'papaya-taiwan-786-seedlings-tray-104',
+      description: 'Vigorous disease-free F1 hybrid Red Lady 786 papaya seedlings grown in sterilized cocopeat germination trays. Produces early-bearing hermaphrodite fruits with deep red, sweet pulp.',
+      price: 1250.0,
+      discountPrice: 1100.0,
+      stock: 40,
+      rating: 0,
+      numReviews: 0,
+      featured: true,
+      categoryId: categoryMap.get('seedlings')!.id,
+      subcategoryId: subcategoryMap.get('papaya')!.id,
+      images: [
+        'https://images.unsplash.com/photo-1523741543316-beb7fc7023d8?w=800&auto=format&fit=crop&q=80',
+      ],
+      attributes: {
+        features: [
+          'Genuine Known-You Taiwan 786 F1 Hybrid',
+          'Uniform Rooting in Sterilized 104-Cell Tray',
+          'High PRSV Virus Tolerance & Heavy Bearing',
+        ],
+        packSizes: ['Tray of 104 Plantlets'],
+        benefits: ['High brix sweetness (13-14%) and excellent shipping shelf life.', 'Starts flowering in 5 months.'],
+        specifications: [
+          { label: 'Product Type', value: 'Horticultural Seedlings' },
+          { label: 'Variety', value: 'Taiwan 786 Red Lady' },
+          { label: 'Age', value: '35-40 Days Hardened' },
+        ],
+      },
+    },
+    {
+      title: 'Tissue Culture Banana Grand Naine Plantlets (Pack of 20)',
+      slug: 'tissue-culture-banana-grand-naine',
+      description: 'Secondary hardened certified virus-indexed Grand Naine (G-9) Cavendish banana tissue culture plantlets. Delivers uniform bunches averaging 25-35 kg per tree.',
+      price: 900.0,
+      discountPrice: 820.0,
+      stock: 30,
+      rating: 0,
+      numReviews: 0,
+      featured: false,
+      categoryId: categoryMap.get('seedlings')!.id,
+      subcategoryId: subcategoryMap.get('tissue-culture-banana')!.id,
+      images: [
+        'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=800&auto=format&fit=crop&q=80',
+      ],
+      attributes: {
+        features: [
+          'Virus-Indexed Secondary Hardened TC Banana',
+          'Uniform Synchronized Maturity Cycle (11-12 Months)',
+          'Heavy Bunch Weight (25 - 35 kg / Plant)',
+        ],
+        packSizes: ['Pack of 20 Plantlets', 'Pack of 50 Plantlets'],
+        benefits: ['Higher bunch yield than traditional suckers.', 'Uniform harvest window.'],
+        specifications: [
+          { label: 'Product Type', value: 'Tissue Culture Seedlings' },
+          { label: 'Variety', value: 'Grand Naine (G9)' },
+        ],
+      },
+    },
+    {
+      title: 'F1 Hybrid Tomato Seeds (Arka Rakshak) 10g',
+      slug: 'f1-hybrid-tomato-seeds-arka-rakshak',
+      description: 'High-yielding triple disease resistant (ToLCV + BW + Early Blight) commercial hybrid tomato seed developed by IIHR. Ideal for open field commercial horticulture cultivation.',
+      price: 450.0,
+      discountPrice: 395.0,
+      stock: 45,
+      rating: 0,
+      numReviews: 0,
+      featured: false,
+      categoryId: categoryMap.get('seeds')!.id,
+      subcategoryId: subcategoryMap.get('horticulture-crops')!.id,
+      images: [
+        'https://images.unsplash.com/photo-1536657464919-892534f60d6e?w=800&auto=format&fit=crop&q=80',
+      ],
+      attributes: {
+        features: [
+          'Triple Disease Resistant Commercial F1 Hybrid',
+          'Firm, Deep Red Round Fruits (90-100g each)',
+          'High Yield Potential up to 35-40 Tons/Acre',
+        ],
+        packSizes: ['10 g', '50 g'],
+        benefits: ['Exceptional fruit firmness for long-distance transport.', 'Requires fewer pesticide sprays.'],
+        specifications: [
+          { label: 'Product Type', value: 'Horticulture Crop Seeds' },
+          { label: 'Germination', value: 'Min 85%' },
+        ],
+      },
+    },
   ];
 
   for (const prod of products) {
@@ -462,6 +665,168 @@ async function main() {
   }
 
   console.log(`🌾 Seeded ${products.length} authentic FarmerBench agricultural products with complete CMS attributes.`);
+
+  // 5. Seed Authentic Agriculture Blog Articles
+  const blogs = [
+    {
+      title: 'How to Choose the Right Fertilizer for Your Crop?',
+      slug: 'how-to-choose-the-right-fertilizer-for-your-crop',
+      excerpt: 'A comprehensive guide on evaluating NPK ratios, soil pH testing, and balancing organic compost with targeted micronutrient feeding.',
+      content: `<p>Choosing the right fertilizer is one of the most critical decisions for achieving vigorous crop growth, robust root architecture, and maximum seasonal harvest. Different crops require distinct nutrient proportions at key developmental stages—from vegetative leaf expansion to flower initiation and fruit setting.</p>
+
+<h2 class="blog-section-heading">1. Understanding Your Crop's Nutrient Needs</h2>
+<p>Every crop requires a balanced formulation of primary macronutrients—Nitrogen (N), Phosphorus (P), and Potassium (K)—supplemented by secondary and micronutrients such as Calcium, Magnesium, Zinc, and Boron. For instance, leafy greens require elevated Nitrogen for chlorophyll synthesis, while root vegetables and fruiting crops demand higher Phosphorus and Potassium levels for root elongation and cellular sugar transport.</p>
+
+<h2 class="blog-section-heading">2. Know the Main Fertilizer Categories</h2>
+<p>Fertilizers are classified into three primary categories depending on their source and release mechanisms:</p>
+<ul class="blog-article-list">
+  <li><strong>Organic & Bio-Fertilizers:</strong> Formulated from microbial inoculants, seaweed extracts, and fermented compost that replenish organic carbon and boost mycorrhizal root colonization.</li>
+  <li><strong>Inorganic Mineral Fertilizers:</strong> Highly soluble formulations engineered for rapid bioavailability and immediate correction of acute nutrient deficiencies.</li>
+  <li><strong>Slow-Release Humic Blends:</strong> Bio-stimulated granules coated with humic and fulvic acids to prevent nitrogen leaching and volatilization.</li>
+</ul>
+
+<div class="blog-expert-tip-box">
+  <div class="blog-tip-icon">💡</div>
+  <div>
+    <h4 class="blog-tip-title">Expert Agronomist Tip</h4>
+    <p class="blog-tip-text">Combining humic acid granules with inorganic fertilizer reduces overall chemical application rates by up to 25% while enhancing fertilizer uptake efficiency.</p>
+  </div>
+</div>
+
+<h2 class="blog-section-heading">3. Decoding the NPK Ratio</h2>
+<p>The three numbers printed on fertilizer packaging indicate the percentage concentration of Nitrogen (N), Phosphate (P₂O₅), and Potash (K₂O). For example, a <strong>10-26-26</strong> ratio delivers 10% Nitrogen for controlled vegetative foliage and 26% each of Phosphorus and Potassium to support prolific flowering and seed development.</p>`,
+      featuredImage: 'https://images.unsplash.com/photo-1574943320219-553eb213f72d?w=1200&auto=format&fit=crop&q=80',
+      author: 'Dr. Ramesh Kumar',
+      authorAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&auto=format&fit=crop&q=80',
+      authorBio: 'Senior Soil Scientist and Agronomist with over 15 years of field consultancy across South India.',
+      category: 'Crop Nutrition',
+      tags: ['Crop Nutrition', 'Fertilizer', 'NPK Guide', 'Soil Fertility'],
+      status: 'PUBLISHED' as const,
+      readingTime: '5 min read',
+      views: 1420,
+      publishedAt: new Date('2024-05-18T10:00:00.000Z'),
+      metaTitle: 'How to Choose the Right Fertilizer for Your Crop | AgriEra',
+      metaDescription: 'Master NPK ratios, organic bio-fertilizers, and micronutrient feeding for maximum crop yields.',
+    },
+    {
+      title: 'Simple Ways to Improve Soil Health Naturally',
+      slug: 'simple-ways-to-improve-soil-health-naturally',
+      excerpt: 'Revitalize degraded farmland using green cover crops, biochar amendments, and reduced tillage strategies.',
+      content: `<p>Healthy soil is a living biological ecosystem teeming with billions of beneficial fungi, actinomycetes, and earthworms. Rebuilding degraded soil organic matter restores natural water retention and reduces reliance on chemical fertilizers.</p>
+
+<h2 class="blog-section-heading">1. Incorporating Green Manure & Cover Crops</h2>
+<p>Sowing leguminous cover crops such as Sunn Hemp, Sesbania, or Cowpea during fallow periods fixes atmospheric nitrogen directly into the soil profile. Tilling these crops back into the topsoil prior to flowering adds immense organic biomass.</p>
+
+<h2 class="blog-section-heading">2. Application of Vermicompost & Biochar</h2>
+<p>Vermicompost supplies millions of beneficial bacteria, actinomycetes, and enzymes. When combined with biochar, it creates permanent micropores that trap nutrients and prevent leaching during heavy monsoons.</p>
+
+<div class="blog-expert-tip-box">
+  <div class="blog-tip-icon">🌱</div>
+  <div>
+    <h4 class="blog-tip-title">Soil Moisture Tip</h4>
+    <p class="blog-tip-text">Every 1% increase in soil organic carbon allows the soil to hold an extra 20,000 gallons of water per acre.</p>
+  </div>
+</div>
+
+<h2 class="blog-section-heading">3. Minimizing Deep Tillage</h2>
+<p>Frequent deep plowing disrupts earthworm tunnels and oxidizes fragile humus layers. Transitioning towards minimum tillage preserves natural fungal mycorrhizal networks.</p>`,
+      featuredImage: 'https://images.unsplash.com/photo-1585314062340-f1a5a7c9328d?w=1200&auto=format&fit=crop&q=80',
+      author: 'Dr. Ramesh Kumar',
+      authorAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&auto=format&fit=crop&q=80',
+      authorBio: 'Specialist in soil microbiology and sustainable land management with active research in bio-stimulants.',
+      category: 'Soil Health',
+      tags: ['Soil Health', 'Organic Farming', 'Composting', 'Regenerative Agriculture'],
+      status: 'PUBLISHED' as const,
+      readingTime: '6 min read',
+      views: 980,
+      publishedAt: new Date('2024-05-12T10:00:00.000Z'),
+      metaTitle: 'Simple Ways to Improve Soil Health Naturally | AgriEra',
+      metaDescription: 'Explore regenerative soil enrichment techniques, microbial inoculants, and cover cropping to rebuild topsoil vitality.',
+    },
+    {
+      title: 'Common Crop Pests and How to Control Them Biologically',
+      slug: 'common-crop-pests-and-how-to-control-them-biologically',
+      excerpt: 'Identify early symptoms of sucking pests, caterpillars, and fungal blights with proven biological controls and neem formulations.',
+      content: `<p>Integrated Pest Management (IPM) provides an environmentally sound approach to suppressing pest populations below economic injury levels without destroying beneficial predator insects.</p>
+
+<h2 class="blog-section-heading">1. Identifying Sucking Pests Early</h2>
+<p>Aphids, whiteflies, and thrips cause leaf curling, sooty mold, and viral transmission. Early deployment of yellow and blue sticky traps provides both monitoring and mass capture.</p>
+
+<h2 class="blog-section-heading">2. Neem-Based Azadirachtin Sprays</h2>
+<p>Cold-pressed pure neem oil formulated at 10,000 PPM disrupts insect feeding, egg-laying, and molting cycles without harming honeybees or earthworms.</p>
+
+<h2 class="blog-section-heading">3. Biological Parasitoids and Predators</h2>
+<p>Introducing beneficial insects like Trichogramma wasps and Chrysoperla lacewings naturally eliminates stem borer eggs and soft-bodied pest nymphs.</p>`,
+      featuredImage: 'https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=800&auto=format&fit=crop&q=80',
+      author: 'Kavitha Nathan',
+      authorAvatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=120&auto=format&fit=crop&q=80',
+      authorBio: 'Plant pathologist focusing on eco-friendly botanical formulations and Integrated Pest Management.',
+      category: 'Plant Protection',
+      tags: ['Pest Control', 'Neem Oil', 'IPM', 'Bio Pesticides'],
+      status: 'PUBLISHED' as const,
+      readingTime: '7 min read',
+      views: 1150,
+      publishedAt: new Date('2024-05-10T10:00:00.000Z'),
+      metaTitle: 'Common Crop Pests & Biological Control Guide | AgriEra',
+      metaDescription: 'Complete guide to identifying agricultural pests and deploying botanical extracts and bio-fungicides.',
+    },
+    {
+      title: 'Smart Drip Irrigation & Water Efficiency for Commercial Crops',
+      slug: 'smart-drip-irrigation-and-water-efficiency',
+      excerpt: 'Save up to 45% water while delivering precise nutrient doses directly to root zones using pressure-compensating drip systems.',
+      content: `<p>Water scarcity and rising power costs make precision irrigation vital for modern horticulture and plantation crops. Smart micro-drip networks eliminate surface runoff and deep percolation losses.</p>
+
+<h2 class="blog-section-heading">1. Pressure Compensating (PC) Drippers</h2>
+<p>PC drippers ensure uniform discharge across undulating topography, providing each plant with the exact volumetric quota regardless of pipe pressure fluctuations.</p>
+
+<h2 class="blog-section-heading">2. Soil Tensiometers and Automated Scheduling</h2>
+<p>Deploying digital soil moisture tensiometers prevents over-irrigation, root suffocation, and fungal damping-off by triggering pumps only when root suction levels reach preset thresholds.</p>`,
+      featuredImage: 'https://images.unsplash.com/photo-1563514227147-6d2ff665a6a0?w=1200&auto=format&fit=crop&q=80',
+      author: 'Dr. Ramesh Kumar',
+      authorAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&auto=format&fit=crop&q=80',
+      authorBio: 'Agricultural engineering specialist in pressurized micro-irrigation and groundwater recharge.',
+      category: 'Irrigation',
+      tags: ['Irrigation', 'Water Management', 'Smart Farming', 'Drip Systems'],
+      status: 'PUBLISHED' as const,
+      readingTime: '5 min read',
+      views: 870,
+      publishedAt: new Date('2024-05-02T10:00:00.000Z'),
+      metaTitle: 'Smart Drip Irrigation & Water Efficiency | AgriEra',
+      metaDescription: 'Maximize water productivity with automated drip irrigation, soil moisture sensing, and root-zone fertigation.',
+    },
+    {
+      title: 'Practices and Economics of Sustainable Agriculture',
+      slug: 'practices-and-economics-of-sustainable-agriculture',
+      excerpt: 'How multi-cropping, organic certification, and input reduction yield premium farm gate prices and long-term financial security.',
+      content: `<p>Sustainable agriculture is not merely an ecological goal; it is a financially viable commercial model. By reducing reliance on expensive synthetic inputs and earning organic market premiums, growers achieve higher net profitability.</p>
+
+<h2 class="blog-section-heading">1. Multi-Tier Cropping Systems</h2>
+<p>Intercropping short-duration legumes beneath fruit orchards or coconut plantations provides continuous cash flow and natural weed suppression.</p>
+
+<h2 class="blog-section-heading">2. Direct-to-Consumer & Agri-FPO Marketing</h2>
+<p>Forming Farmer Producer Organizations (FPOs) eliminates middleman margins and empowers farmers with collective bargaining for wholesale bulk inputs.</p>`,
+      featuredImage: 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=1200&auto=format&fit=crop&q=80',
+      author: 'AgriEra Agri Expert',
+      authorAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80',
+      authorBio: 'Senior agronomist with 12+ years of on-field experience.',
+      category: 'Farming Tips',
+      tags: ['Sustainable Farming', 'Farming Tips', 'Agri Economics', 'FPO'],
+      status: 'PUBLISHED' as const,
+      readingTime: '6 min read',
+      views: 940,
+      publishedAt: new Date('2024-04-28T10:00:00.000Z'),
+      metaTitle: 'Practices and Economics of Sustainable Agriculture | AgriEra',
+      metaDescription: 'Explore actionable sustainable farming models that cut input costs and increase farm revenue.',
+    },
+  ];
+
+  for (const b of blogs) {
+    await prisma.blog.create({
+      data: b,
+    });
+  }
+
+  console.log(`📰 Seeded ${blogs.length} authentic agriculture blog articles.`);
   console.log('✅ Database seed completed successfully.');
 }
 

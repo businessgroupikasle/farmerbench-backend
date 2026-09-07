@@ -1,4 +1,4 @@
-﻿import { Router } from 'express';
+import { Router } from 'express';
 import authRoutes from './auth.routes';
 import productRoutes from './product.routes';
 import categoryRoutes from './category.routes';
@@ -15,6 +15,7 @@ import marketPriceRoutes from './marketPrice.routes';
 import heroBannerRoutes from './heroBanner.routes';
 import postalCodeRoutes from './postalCode.routes';
 import chatRoutes from './chat.routes';
+import blogRoutes from './blog.routes';
 
 const router = Router();
 
@@ -34,5 +35,6 @@ router.use('/market-prices', marketPriceRoutes);
 router.use('/hero-banners', heroBannerRoutes);
 router.use('/postal-codes', postalCodeRoutes);
 router.use('/chat', chatRoutes);
+router.use('/blogs', blogRoutes);
 
 export default router;

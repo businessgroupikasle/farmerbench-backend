@@ -25,6 +25,9 @@ router.get('/coupons', async (_req, res, next) => {
 router.post('/coupons', async (req, res, next) => {
   try { return sendSuccess(res, await couponService.create(req.body), 'Coupon created', 201); } catch (error) { next(error); }
 });
+router.patch('/coupons/:id', async (req, res, next) => {
+  try { return sendSuccess(res, await couponService.update(req.params.id, req.body), 'Coupon updated'); } catch (error) { next(error); }
+});
 router.delete('/coupons/:id', async (req, res, next) => {
   try { await couponService.remove(req.params.id); return sendSuccess(res, null, 'Coupon removed'); } catch (error) { next(error); }
 });

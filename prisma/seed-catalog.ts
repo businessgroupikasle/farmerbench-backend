@@ -2,24 +2,19 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 const catalog = [
-  ['Seeds', 'seeds', [['Vegetable Seeds','vegetable-seeds'],['Fruit Seeds','fruit-seeds'],['Flower Seeds','flower-seeds'],['Field Crop Seeds','field-crop-seeds']]],
-  ['Seedlings & Planting Materials', 'seedlings-planting-materials', [['Fruit Seedlings','fruit-seedlings'],['Banana Plants','banana-plants'],['Watermelon','watermelon'],['Muskmelon','muskmelon']]],
-  ['Fruit Plants & Trees', 'fruit-plants-trees', [['Mango','mango'],['Guava','guava'],['Other Fruit Plants','other-fruit-plants']]],
-  ['Plantation Crops', 'plantation-crops', [['Coconut','coconut'],['Arecanut','arecanut'],['Pepper','pepper']]],
-  ['Other Plants', 'other-plants', [['Aromatic / Utility Plants','aromatic-utility-plants']]],
-  ['Organic Farming', 'organic-farming', [['Bio Fertilizers','bio-fertilizers']]],
-  ['Bio Fungicides', 'bio-fungicides', [['Biological Fungicides','biological-fungicides']]],
-  ['Bio Pesticides', 'bio-pesticides', [['Biological Pesticides','biological-pesticides']]],
-  ['Bio Stimulants', 'bio-stimulants', [['Plant Growth / Bio Stimulants','plant-growth-bio-stimulants']]],
-  ['Traps', 'traps', [['Pheromone Traps','pheromone-traps'],['Sticky Traps','sticky-traps'],['Light Traps','light-traps']]],
-  ['Farm Equipment', 'farm-equipment', [['Battery Sprayers','battery-sprayers'],['Farm Tools','farm-tools']]],
+  ['organic farming', 'organic-farming', [['Bio fertilizers', 'bio-fertilizers'], ['Bio fungicides', 'bio-fungicides'], ['Bio pesticides', 'bio-pesticides'], ['Bio stimulants', 'bio-stimulants']]],
+  ['chemical', 'chemical', []],
+  ['traps', 'traps', [['Pheromone trap', 'pheromone-trap'], ['Sticky traps', 'sticky-traps'], ['Light traps', 'light-traps']]],
+  ['seedlings', 'seedlings', [['Papaya', 'papaya'], ['Tissue culture banana', 'tissue-culture-banana'], ['Tuber banana', 'tuber-banana'], ['Watermelon', 'watermelon'], ['Muskmelon', 'muskmelon'], ['Fruit trees', 'fruit-trees'], ['Coconut', 'coconut'], ['Arecanut', 'arecanut'], ['Pepper', 'pepper'], ['Others', 'others']]],
+  ['Seeds', 'seeds', [['Horticulture Crops', 'horticulture-crops'], ['Field Crops', 'field-crops']]],
+  ['Farm equipment', 'farm-equipment', []],
 ] as const;
 
 const exactMappings: Record<string, [string, string]> = {
-  'trichoderma-bio-fungicide': ['bio-fungicides', 'biological-fungicides'],
-  'seaweed-extract-concentrated-liquid': ['bio-stimulants', 'plant-growth-bio-stimulants'],
-  'humic-power-soil-conditioner': ['bio-stimulants', 'plant-growth-bio-stimulants'],
-  'certified-organic-paddy-seeds-bpt-5204': ['seeds', 'field-crop-seeds'],
+  'trichoderma-bio-fungicide': ['organic-farming', 'bio-fungicides'],
+  'seaweed-extract-concentrated-liquid': ['organic-farming', 'bio-stimulants'],
+  'humic-power-soil-conditioner': ['organic-farming', 'bio-stimulants'],
+  'certified-organic-paddy-seeds-bpt-5204': ['seeds', 'field-crops'],
 };
 
 async function main() {

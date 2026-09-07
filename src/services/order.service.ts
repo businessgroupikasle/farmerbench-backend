@@ -150,7 +150,7 @@ export class OrderService {
     const itemsPrice = Number(
       orderItemsToCreate.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2)
     );
-    const shippingPrice = itemsPrice >= 999 ? 0 : 80;
+    const shippingPrice = itemsPrice >= 5000 ? 0 : 80;
     const taxPrice = 0; // Displayed product prices are GST-inclusive.
     const couponResult = input.couponCode
       ? await couponService.calculate(input.couponCode, itemsPrice)

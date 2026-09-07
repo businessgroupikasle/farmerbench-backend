@@ -1,10 +1,12 @@
 import { Router } from 'express';
-import { requireAuth } from '../middlewares/auth.middleware';
 import { couponService } from '../services/coupon.service';
 import { sendSuccess } from '../utils/response';
 
 const router = Router();
-router.use(requireAuth);
+
+router.get('/homepage-offer', async (_req, res, next) => {
+  try { return sendSuccess(res, await couponService.getHomepageOffer()); } catch (error) { next(error); }
+});
 
 router.post('/validate', async (req, res, next) => {
   try {
