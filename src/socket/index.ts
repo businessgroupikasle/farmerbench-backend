@@ -99,3 +99,13 @@ export const emitBookingUpdated = (booking: any) => {
   io.emit('booking:updated', booking);
 };
 
+
+export const emitContactCreated = (contact: any) => {
+  if (!io) return;
+  io.emit('contact:created', contact);
+};
+
+export const emitContactUpdated = (contact: any) => {
+  if (!io) return;
+  io.emit('contact:updated', contact);
+};

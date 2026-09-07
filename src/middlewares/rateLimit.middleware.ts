@@ -91,3 +91,10 @@ export const otpVerifyRateLimiter = createRateLimiter({
   max: 30,
   message: 'Too many verification attempts.',
 });
+
+export const contactRateLimiter = createRateLimiter({
+  windowMs: 10 * 60 * 1000,
+  max: 5,
+  message: 'Too many contact requests.',
+  keyGenerator: (req) => (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket.remoteAddress || req.ip || 'unknown_ip',
+});

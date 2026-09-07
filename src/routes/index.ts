@@ -16,6 +16,7 @@ import heroBannerRoutes from './heroBanner.routes';
 import postalCodeRoutes from './postalCode.routes';
 import chatRoutes from './chat.routes';
 import blogRoutes from './blog.routes';
+import contactRoutes from './contact.routes';
 
 const router = Router();
 
@@ -36,5 +37,6 @@ router.use('/hero-banners', heroBannerRoutes);
 router.use('/postal-codes', postalCodeRoutes);
 router.use('/chat', chatRoutes);
 router.use('/blogs', blogRoutes);
+router.use('/contacts', contactRoutes);
 
 export default router;
