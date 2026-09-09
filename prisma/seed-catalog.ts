@@ -10,12 +10,6 @@ const catalog = [
   ['Farm equipment', 'farm-equipment', []],
 ] as const;
 
-const exactMappings: Record<string, [string, string]> = {
-  'trichoderma-bio-fungicide': ['organic-farming', 'bio-fungicides'],
-  'seaweed-extract-concentrated-liquid': ['organic-farming', 'bio-stimulants'],
-  'humic-power-soil-conditioner': ['organic-farming', 'bio-stimulants'],
-  'certified-organic-paddy-seeds-bpt-5204': ['seeds', 'field-crops'],
-};
 
 async function main() {
   const ids = new Map<string, string>();
@@ -36,12 +30,6 @@ async function main() {
     }
   }
 
-  for (const [productSlug, [categorySlug, subcategorySlug]] of Object.entries(exactMappings)) {
-    await prisma.product.updateMany({
-      where: { slug: productSlug },
-      data: { categoryId: ids.get(categorySlug)!, subcategoryId: ids.get(subcategorySlug)! },
-    });
-  }
 
   const unmapped = await prisma.product.findMany({
     where: { subcategoryId: null },
