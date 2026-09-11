@@ -18,6 +18,9 @@ router.post(
   serviceBookingController.createBooking
 );
 
+// Signed-in user booking history
+router.get('/mine', requireAuth, serviceBookingController.getMyBookings);
+
 // Admin summary metrics
 router.get('/stats', requireAuth, requireAdmin, serviceBookingController.getBookingStats);
 

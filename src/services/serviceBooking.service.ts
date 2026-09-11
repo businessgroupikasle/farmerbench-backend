@@ -44,6 +44,9 @@ export class ServiceBookingService {
     return booking;
   }
 
+  async getMyBookings(userId: string) {
+    return serviceBookingRepository.findByUserId(userId);
+  }
   async getAllBookings(query: ServiceBookingQueryInput) {
     return serviceBookingRepository.findAll(query);
   }

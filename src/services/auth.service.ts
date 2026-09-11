@@ -3,8 +3,49 @@ import { RegisterInput, LoginInput, UpdateProfileInput, ChangePasswordInput } fr
 import { hashPassword, comparePassword } from '../utils/password';
 import { generateToken } from '../utils/jwt';
 import { AppError } from '../utils/response';
+import { OAuth2Client } from 'google-auth-library';
+import { env } from '../config/env';
 
 export class AuthService {
+  private readonly googleClient = new OAuth2Client();
+
+  async googleLogin(credential: string) {
+    if (!env.GOOGLE_CLIENT_ID) {
+      throw new AppError('Google sign-in is not configured on the server', 503);
+    }
+
+    let payload;
+    try {
+      const ticket = await this.googleClient.verifyIdToken({
+        idToken: credential,
+        audience: env.GOOGLE_CLIENT_ID,
+      });
+      payload = ticket.getPayload();
+    } catch {
+      throw new AppError('Invalid or expired Google sign-in credential', 401);
+    }
+
+    if (!payload?.sub || !payload.email || !payload.email_verified) {
+      throw new AppError('A verified Google email address is required', 401);
+    }
+
+    const email = payload.email.toLowerCase();
+    const existingUser = await userRepository.findByEmail(email);
+    const user = existingUser
+      ? await userRepository.update(existingUser.id, {
+          emailVerified: true,
+          avatarUrl: existingUser.avatarUrl || payload.picture || null,
+        })
+      : await userRepository.create({
+          email,
+          name: payload.name?.trim() || email.split('@')[0],
+          emailVerified: true,
+          avatarUrl: payload.picture || null,
+        });
+
+    const token = generateToken({ userId: user.id, email: user.email, role: user.role });
+    return { user, token };
+  }
   async register(input: RegisterInput) {
     const existing = await userRepository.findByEmail(input.email.toLowerCase());
     if (existing) {

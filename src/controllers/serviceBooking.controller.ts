@@ -13,6 +13,14 @@ export class ServiceBookingController {
     }
   }
 
+  async getMyBookings(req: Request, res: Response, next: NextFunction) {
+    try {
+      const bookings = await serviceBookingService.getMyBookings(req.user!.userId);
+      return sendSuccess(res, bookings);
+    } catch (error) {
+      next(error);
+    }
+  }
   async getAllBookings(req: Request, res: Response, next: NextFunction) {
     try {
       const result = await serviceBookingService.getAllBookings(req.query as any);

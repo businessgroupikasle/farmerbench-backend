@@ -40,6 +40,7 @@ export class UserRepository {
     password?: string;
     phone?: string | null;
     emailVerified?: boolean;
+    avatarUrl?: string | null;
     location?: string | null;
     crops?: string | null;
     status?: string;
@@ -53,6 +54,7 @@ export class UserRepository {
         role: data.role || 'CUSTOMER',
         phone: data.phone || null,
         emailVerified: data.emailVerified || false,
+        avatarUrl: data.avatarUrl || null,
         location: data.location || null,
         crops: data.crops || null,
         status: data.status || 'Active',

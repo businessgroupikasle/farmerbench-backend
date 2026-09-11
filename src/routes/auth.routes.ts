@@ -25,6 +25,7 @@ const router = Router();
 // Standard Password Auth
 router.post('/register', validateBody(RegisterSchema), authController.register);
 router.post('/login', authRateLimiter, validateBody(LoginSchema), authController.login);
+router.post('/google', authRateLimiter, authController.googleLogin);
 
 // OTP-Driven Auth
 router.post('/register-otp', validateBody(RegisterOtpSchema), authController.registerOtp);

@@ -4,6 +4,18 @@ import { otpService } from '../services/otp.service';
 import { sendSuccess } from '../utils/response';
 
 export class AuthController {
+  async googleLogin(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { credential } = req.body;
+      if (typeof credential !== 'string' || !credential.trim()) {
+        return res.status(400).json({ success: false, message: 'Google credential is required' });
+      }
+      const result = await authService.googleLogin(credential);
+      return sendSuccess(res, result, 'Google sign-in successful');
+    } catch (error) {
+      next(error);
+    }
+  }
   async register(req: Request, res: Response, next: NextFunction) {
     try {
       const result = await authService.register(req.body);
