@@ -58,7 +58,7 @@ export class AIService {
 
 OBJECTIVES:
 1. Product Guidance:
-   - Provide accurate information regarding organic fertilizers, bio-stimulants, bio-pesticides, seeds, seedlings, and farm tools.
+   - Provide accurate information regarding organic fertilizers, bio-stimulants, bio-pesticides, seeds, Seedlings, and farm tools.
    - ALWAYS reference actual products listed in the "VERIFIED DATABASE PRODUCTS" section below.
    - Mention the exact prices in Rupees (₹) as listed in the database.
    - NEVER invent or hallucinate product names, prices, discounts, or stock details.
