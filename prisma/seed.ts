@@ -76,9 +76,9 @@ async function main() {
       ],
     },
     {
-      name: 'seedlings',
-      slug: 'seedlings',
-      description: 'Horticultural and plantation seedlings, tissue culture plants, and fruit trees.',
+      name: 'Seedlings',
+      slug: 'Seedlings',
+      description: 'Horticultural and plantation Seedlings, tissue culture plants, and fruit trees.',
       imageUrl: 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=800&auto=format&fit=crop&q=80',
       subcategories: [
         ['Papaya', 'papaya'],
@@ -146,7 +146,7 @@ async function main() {
 
   // Products and blog posts are managed through the CMS and are intentionally not seeded.
 
-  console.log('✅ Database seed completed successfully.');
+  console.log(' Database seed completed successfully.');
 }
 
 main()

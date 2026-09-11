@@ -5,7 +5,7 @@ const catalog = [
   ['organic farming', 'organic-farming', [['Bio fertilizers', 'bio-fertilizers'], ['Bio fungicides', 'bio-fungicides'], ['Bio pesticides', 'bio-pesticides'], ['Bio stimulants', 'bio-stimulants']]],
   ['chemical', 'chemical', []],
   ['traps', 'traps', [['Pheromone trap', 'pheromone-trap'], ['Sticky traps', 'sticky-traps'], ['Light traps', 'light-traps']]],
-  ['seedlings', 'seedlings', [['Papaya', 'papaya'], ['Tissue culture banana', 'tissue-culture-banana'], ['Tuber banana', 'tuber-banana'], ['Watermelon', 'watermelon'], ['Muskmelon', 'muskmelon'], ['Fruit trees', 'fruit-trees'], ['Coconut', 'coconut'], ['Arecanut', 'arecanut'], ['Pepper', 'pepper'], ['Others', 'others']]],
+  ['Seedlings', 'Seedlings', [['Papaya', 'papaya'], ['Tissue culture banana', 'tissue-culture-banana'], ['Tuber banana', 'tuber-banana'], ['Watermelon', 'watermelon'], ['Muskmelon', 'muskmelon'], ['Fruit trees', 'fruit-trees'], ['Coconut', 'coconut'], ['Arecanut', 'arecanut'], ['Pepper', 'pepper'], ['Others', 'others']]],
   ['Seeds', 'seeds', [['Horticulture Crops', 'horticulture-crops'], ['Field Crops', 'field-crops']]],
   ['Farm equipment', 'farm-equipment', []],
 ] as const;
