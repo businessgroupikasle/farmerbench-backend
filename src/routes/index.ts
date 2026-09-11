@@ -17,6 +17,7 @@ import postalCodeRoutes from './postalCode.routes';
 import chatRoutes from './chat.routes';
 import blogRoutes from './blog.routes';
 import contactRoutes from './contact.routes';
+import expertRoutes from './expert.routes';
 
 const router = Router();
 
@@ -38,5 +39,6 @@ router.use('/postal-codes', postalCodeRoutes);
 router.use('/chat', chatRoutes);
 router.use('/blogs', blogRoutes);
 router.use('/contacts', contactRoutes);
+router.use('/experts', expertRoutes);
 
 export default router;
