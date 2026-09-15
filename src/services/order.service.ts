@@ -4,6 +4,7 @@ import { productRepository } from '../repositories/product.repository';
 import { CreateOrderInput, UpdateOrderStatusInput, OrderStatus } from '@formerbench/shared';
 import { AppError } from '../utils/response';
 import { couponService } from './coupon.service';
+import { orderEmailService } from './order-email.service';
 
 export class OrderService {
   async createOrder(userId: string, input: CreateOrderInput) {
@@ -173,6 +174,7 @@ export class OrderService {
     // Online-payment carts are cleared only after payment verification.
     if (input.paymentMethod !== 'RAZORPAY') {
       await cartRepository.clearCart(userId);
+      void orderEmailService.notifyOrderConfirmed(order.id);
     }
 
     return order;

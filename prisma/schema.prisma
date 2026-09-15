@@ -240,6 +240,8 @@ model Order {
   discountPrice     Float           @default(0)
   couponCode        String?
   couponRedeemed    Boolean         @default(false)
+  customerOrderEmailSentAt DateTime?
+  adminOrderEmailSentAt    DateTime?
   items             OrderItem[]
   payment           Payment?
   createdAt         DateTime        @default(now())

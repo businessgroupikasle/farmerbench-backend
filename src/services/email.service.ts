@@ -10,19 +10,19 @@ export class EmailService {
   }
 
   private initTransporter() {
-    if (env.SMTP_USER && env.SMTP_PASS) {
+    if (env.GOOGLE_SMTP_EMAIL && env.GOOGLE_SMTP_APP_PASSWORD) {
       try {
         this.transporter = nodemailer.createTransport({
-          host: env.SMTP_HOST,
-          port: env.SMTP_PORT,
-          secure: env.SMTP_SECURE,
+          host: env.GOOGLE_SMTP_HOST,
+          port: env.GOOGLE_SMTP_PORT,
+          secure: false,
           auth: {
-            user: env.SMTP_USER,
-            pass: env.SMTP_PASS,
+            user: env.GOOGLE_SMTP_EMAIL,
+            pass: env.GOOGLE_SMTP_APP_PASSWORD,
           },
         });
         this.isConfigured = true;
-        console.log(`📧 Nodemailer SMTP initialized for ${env.SMTP_HOST}:${env.SMTP_PORT} (${env.SMTP_USER})`);
+        console.log(`📧 Nodemailer SMTP initialized for ${env.GOOGLE_SMTP_HOST}:${env.GOOGLE_SMTP_PORT} (${env.GOOGLE_SMTP_EMAIL})`);
       } catch (err) {
         console.error('❌ Failed to initialize Nodemailer transporter:', err);
         this.isConfigured = false;
@@ -39,7 +39,7 @@ export class EmailService {
       console.log('📨 [DEV SIMULATION EMAIL]');
       console.log(`To: ${options.to}`);
       console.log(`Subject: ${options.subject}`);
-      console.log(`From: ${env.SMTP_FROM}`);
+      console.log(`From: "FarmerBench" <${env.GOOGLE_SMTP_EMAIL}>`);
       if (options.text) {
         console.log(`Body:\n${options.text}`);
       }
@@ -49,7 +49,7 @@ export class EmailService {
 
     try {
       const info = await this.transporter.sendMail({
-        from: env.SMTP_FROM,
+        from: `"FarmerBench" <${env.GOOGLE_SMTP_EMAIL}>`,
         to: options.to,
         subject: options.subject,
         html: options.html,

@@ -11,7 +11,7 @@ const userCreationCode = `  // 2. Create Default Users (Super Admin + Authentic 
   const admin = await prisma.user.create({
     data: {
       email: 'admin@formerbench.dev',
-      name: 'Arun (Super Admin)',
+m r      name: 'Amar (Super Admin)',
       password: defaultPassword,
       role: Role.ADMIN,
       phone: '+91 98400 12345',

@@ -24,12 +24,12 @@ async function main() {
   console.log('🧹 Cleaned existing database records.');
 
   // 2. Create Super Admin User Only
-  const defaultPassword = await bcrypt.hash('DemoPass123!', 10);
+  const defaultPassword = await bcrypt.hash('AgriEra@2026', 10);
 
   const admin = await prisma.user.create({
     data: {
-      email: 'admin@formerbench.dev',
-      name: 'Arun (Super Admin)',
+      email: 'admin@agriera.in',
+      name: 'Amar (Super Admin)',
       password: defaultPassword,
       role: Role.ADMIN,
       phone: '+91 98400 12345',
@@ -41,12 +41,12 @@ async function main() {
     },
   });
 
-  console.log('👑 Created Super Admin (admin@formerbench.dev).');
+  console.log('👑 Created Super Admin (admin@agriera.in).');
 
   // 3. Create the admin catalog category and subcategory hierarchy
   const categorySeedData = [
     {
-      name: 'organic farming',
+      name: 'Organic farming',
       slug: 'organic-farming',
       description: 'Organic farming inputs, bio fertilizers, fungicides, pesticides, and stimulants.',
       imageUrl: 'https://images.unsplash.com/photo-1574943320219-553eb213f72d?w=800&auto=format&fit=crop&q=80',
@@ -58,14 +58,14 @@ async function main() {
       ],
     },
     {
-      name: 'chemical',
+      name: 'Chemical',
       slug: 'chemical',
       description: 'Chemical crop solutions and agricultural chemicals.',
       imageUrl: 'https://images.unsplash.com/photo-1530507629858-e4977d30e9e0?w=800&auto=format&fit=crop&q=80',
       subcategories: [],
     },
     {
-      name: 'traps',
+      name: 'Traps',
       slug: 'traps',
       description: 'Agricultural pest control traps including pheromone, sticky, and light traps.',
       imageUrl: 'https://images.unsplash.com/photo-1592417817098-8f3d69109853?w=800&auto=format&fit=crop&q=80',

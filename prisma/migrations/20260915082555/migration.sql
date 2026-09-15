@@ -22,6 +22,9 @@ CREATE TYPE "BookingStatus" AS ENUM ('NEW', 'CONTACTED', 'IN_PROGRESS', 'COMPLET
 -- CreateEnum
 CREATE TYPE "HeroPage" AS ENUM ('HOME', 'ABOUT', 'SERVICES', 'PRODUCTS');
 
+-- CreateEnum
+CREATE TYPE "BlogStatus" AS ENUM ('PUBLISHED', 'DRAFT', 'ARCHIVED');
+
 -- CreateTable
 CREATE TABLE "User" (
     "id" TEXT NOT NULL,
@@ -176,6 +179,8 @@ CREATE TABLE "Order" (
     "discountPrice" DOUBLE PRECISION NOT NULL DEFAULT 0,
     "couponCode" TEXT,
     "couponRedeemed" BOOLEAN NOT NULL DEFAULT false,
+    "customerOrderEmailSentAt" TIMESTAMP(3),
+    "adminOrderEmailSentAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -313,6 +318,64 @@ CREATE TABLE "HeroBanner" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "HeroBanner_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Blog" (
+    "id" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "slug" TEXT NOT NULL,
+    "excerpt" TEXT NOT NULL,
+    "content" TEXT NOT NULL,
+    "featuredImage" TEXT NOT NULL DEFAULT 'https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=800&auto=format&fit=crop&q=80',
+    "author" TEXT NOT NULL DEFAULT 'AgriEra Agri Expert',
+    "authorAvatar" TEXT,
+    "authorBio" TEXT,
+    "category" TEXT NOT NULL DEFAULT 'General',
+    "tags" TEXT[] DEFAULT ARRAY[]::TEXT[],
+    "status" "BlogStatus" NOT NULL DEFAULT 'PUBLISHED',
+    "readingTime" TEXT NOT NULL DEFAULT '5 min read',
+    "views" INTEGER NOT NULL DEFAULT 0,
+    "publishedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "metaTitle" TEXT,
+    "metaDescription" TEXT,
+
+    CONSTRAINT "Blog_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Contact" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "email" TEXT NOT NULL,
+    "phone" TEXT NOT NULL,
+    "subject" TEXT NOT NULL,
+    "message" TEXT NOT NULL,
+    "isRead" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Contact_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "AgronomyExpert" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "specialization" TEXT NOT NULL,
+    "territory" TEXT NOT NULL,
+    "avatar" TEXT,
+    "phone" TEXT,
+    "rating" DOUBLE PRECISION NOT NULL DEFAULT 5,
+    "consultations" INTEGER NOT NULL DEFAULT 0,
+    "status" TEXT NOT NULL DEFAULT 'Available',
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "AgronomyExpert_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
@@ -464,6 +527,39 @@ CREATE INDEX "HeroBanner_page_isActive_sortOrder_idx" ON "HeroBanner"("page", "i
 
 -- CreateIndex
 CREATE INDEX "HeroBanner_startsAt_endsAt_idx" ON "HeroBanner"("startsAt", "endsAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Blog_slug_key" ON "Blog"("slug");
+
+-- CreateIndex
+CREATE INDEX "Blog_slug_idx" ON "Blog"("slug");
+
+-- CreateIndex
+CREATE INDEX "Blog_category_idx" ON "Blog"("category");
+
+-- CreateIndex
+CREATE INDEX "Blog_status_idx" ON "Blog"("status");
+
+-- CreateIndex
+CREATE INDEX "Blog_publishedAt_idx" ON "Blog"("publishedAt");
+
+-- CreateIndex
+CREATE INDEX "Contact_email_idx" ON "Contact"("email");
+
+-- CreateIndex
+CREATE INDEX "Contact_createdAt_idx" ON "Contact"("createdAt");
+
+-- CreateIndex
+CREATE INDEX "Contact_isRead_idx" ON "Contact"("isRead");
+
+-- CreateIndex
+CREATE INDEX "AgronomyExpert_name_idx" ON "AgronomyExpert"("name");
+
+-- CreateIndex
+CREATE INDEX "AgronomyExpert_territory_idx" ON "AgronomyExpert"("territory");
+
+-- CreateIndex
+CREATE INDEX "AgronomyExpert_isActive_idx" ON "AgronomyExpert"("isActive");
 
 -- AddForeignKey
 ALTER TABLE "PasswordResetToken" ADD CONSTRAINT "PasswordResetToken_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;

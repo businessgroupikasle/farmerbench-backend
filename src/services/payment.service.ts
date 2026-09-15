@@ -3,6 +3,7 @@ import Razorpay from 'razorpay';
 import { prisma } from '../config/database';
 import { env } from '../config/env';
 import { AppError } from '../utils/response';
+import { orderEmailService } from './order-email.service';
 
 type VerifiedPayment = {
   orderId: string;
@@ -121,7 +122,7 @@ export class PaymentService {
   }
 
   private async finalizePayment(data: Omit<VerifiedPayment, 'razorpaySignature'>) {
-    return prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       const claimed = await tx.order.updateMany({
         where: { id: data.orderId, paymentMethod: 'RAZORPAY', paymentStatus: { not: 'PAID' } },
         data: { paymentStatus: 'PAID', orderStatus: 'PROCESSING' },
@@ -170,6 +171,9 @@ export class PaymentService {
       const paidOrder = await tx.order.findUnique({ where: { id: order.id } });
       return { success: true, message: 'Payment verified successfully and order confirmed', order: paidOrder, payment: paidPayment };
     });
+
+    void orderEmailService.notifyOrderConfirmed(data.orderId);
+    return result;
   }
 }
 

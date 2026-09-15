@@ -109,7 +109,7 @@ export class ChatService {
     const synonymMap: Record<string, string[]> = {
       fertilizer: ['fertilizer', 'uram', 'nourish', 'micronutrient', 'conditioner', 'humic', 'stimulant'],
       stimulant: ['growth', 'booster', 'stimulant', 'seaweed', 'valarchi'],
-      pesticide: ['pesticide', 'poochi', 'marundhu', 'insect', 'pest', 'worm'],
+      pesticide: ['pesticide', 'poochi', 'mAmardhu', 'insect', 'pest', 'worm'],
       fungicide: ['fungicide', 'fungus', 'rotting', 'rot', 'mildew', 'trichoderma', 'azukal'],
       neem: ['neem', 'veppam', 'veppennai', 'azadirachtin'],
       humic: ['humic', 'soil', 'conditioner', 'potassium'],
@@ -144,7 +144,7 @@ export class ChatService {
 
     // Determine if query is asking for products
     const productIntentTriggers = [
-      'product', 'buy', 'price', 'fertilizer', 'uram', 'marundhu', 'seed', 'vidhai',
+      'product', 'buy', 'price', 'fertilizer', 'uram', 'mAmardhu', 'seed', 'vidhai',
       'cost', 'recommend', 'suggest', 'available', 'iruka', 'venum', 'kaatu', 'rate',
       'spray', 'booster', 'neem', 'humic', 'paddy', 'tomato', 'cotton'
     ];
