@@ -2,6 +2,7 @@
 import { productRepository } from '../repositories/product.repository';
 import { AddToCartInput, SyncCartInput } from '@formerbench/shared';
 import { AppError } from '../utils/response';
+import { getEffectivePrice } from '../utils/pricing';
 
 export class CartService {
   private formatCart(cart: any) {
@@ -25,13 +26,16 @@ export class CartService {
       const selectedAttrs = (item.selectedAttributes as Record<string, any>) || {};
       const packSize = selectedAttrs.packSize;
       const attrs = (item.product?.attributes as Record<string, any>) || {};
-      const variants: Array<{ packSize: string; price: number; comparePrice?: number; stock?: number }> =
+      const variants: Array<{ label?: string; packSize?: string; price?: number; sellingPrice?: number; mrp?: number; comparePrice?: number; stock?: number }> =
         Array.isArray(attrs.variants) ? attrs.variants : [];
-      const matchedVariant = packSize ? variants.find((v) => v.packSize === packSize) : null;
+      const matchedVariant = packSize ? variants.find((v) => (v.label || v.packSize) === packSize) : null;
 
       const price = matchedVariant
-        ? Number(matchedVariant.price)
-        : (item.product?.discountPrice ?? item.product?.price ?? 0);
+        ? getEffectivePrice(
+            matchedVariant.mrp ?? matchedVariant.comparePrice ?? matchedVariant.price,
+            matchedVariant.sellingPrice ?? matchedVariant.price
+          )
+        : getEffectivePrice(item.product?.price, item.product?.discountPrice);
 
       subtotal += price * item.quantity;
       totalItems += item.quantity;

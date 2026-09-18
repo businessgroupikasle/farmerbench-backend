@@ -5,6 +5,7 @@ import { CreateOrderInput, UpdateOrderStatusInput, OrderStatus } from '@formerbe
 import { AppError } from '../utils/response';
 import { couponService } from './coupon.service';
 import { orderEmailService } from './order-email.service';
+import { getEffectivePrice } from '../utils/pricing';
 
 export class OrderService {
   async createOrder(userId: string, input: CreateOrderInput) {
@@ -35,6 +36,7 @@ export class OrderService {
           packSize?: string;
           price?: number;
           sellingPrice?: number;
+          mrp?: number;
           comparePrice?: number;
           stock?: number;
           sku?: string;
@@ -53,8 +55,11 @@ export class OrderService {
 
         // Authoritative price & stock strictly from PostgreSQL
         const unitPrice = matchedVariant
-          ? Number(matchedVariant.sellingPrice ?? matchedVariant.price)
-          : (product.discountPrice ?? product.price);
+          ? getEffectivePrice(
+              matchedVariant.mrp ?? matchedVariant.comparePrice ?? matchedVariant.price,
+              matchedVariant.sellingPrice ?? matchedVariant.price
+            )
+          : getEffectivePrice(product.price, product.discountPrice);
         const availableStock =
           matchedVariant && typeof matchedVariant.stock === 'number'
             ? matchedVariant.stock
@@ -100,6 +105,7 @@ export class OrderService {
           packSize?: string;
           price?: number;
           sellingPrice?: number;
+          mrp?: number;
           comparePrice?: number;
           stock?: number;
           sku?: string;
@@ -116,8 +122,11 @@ export class OrderService {
 
         // Authoritative price & stock strictly from PostgreSQL
         const unitPrice = matchedVariant
-          ? Number(matchedVariant.sellingPrice ?? matchedVariant.price)
-          : (item.product.discountPrice ?? item.product.price);
+          ? getEffectivePrice(
+              matchedVariant.mrp ?? matchedVariant.comparePrice ?? matchedVariant.price,
+              matchedVariant.sellingPrice ?? matchedVariant.price
+            )
+          : getEffectivePrice(item.product.price, item.product.discountPrice);
         const availableStock =
           matchedVariant && typeof matchedVariant.stock === 'number'
             ? matchedVariant.stock

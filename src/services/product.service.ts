@@ -7,6 +7,12 @@ import { emitProductCreated, emitProductUpdated, emitProductDeleted } from '../s
 import { prisma } from '../config/database';
 
 export class ProductService {
+  private validatePrices(price: number, discountPrice?: number | null) {
+    if (discountPrice != null && discountPrice >= price) {
+      throw new AppError('Discount price must be less than the original price', 400);
+    }
+  }
+
   async getProducts(params: ProductQueryInput) {
     return productRepository.findAll(params);
   }
@@ -38,6 +44,7 @@ export class ProductService {
   }
 
   async createProduct(input: CreateProductInput) {
+    this.validatePrices(input.price, input.discountPrice);
     const category = await categoryRepository.findById(input.categoryId);
     if (!category) {
       throw new AppError('Category not found', 400);
@@ -59,6 +66,10 @@ export class ProductService {
     if (!existing) {
       throw new AppError('Product not found', 404);
     }
+    this.validatePrices(
+      input.price ?? existing.price,
+      input.discountPrice === undefined ? existing.discountPrice : input.discountPrice
+    );
     await this.validateSubcategory(
       input.categoryId || existing.categoryId,
       input.subcategoryId === undefined ? existing.subcategoryId : input.subcategoryId
