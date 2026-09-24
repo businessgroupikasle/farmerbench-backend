@@ -9,6 +9,12 @@ import { env } from '../config/env';
 export class AuthService {
   private readonly googleClient = new OAuth2Client();
 
+  private ensureAccountIsActive(user: { status?: string | null }) {
+    if (user.status === 'Deactivated') {
+      throw new AppError('Your account has been deactivated. Please contact support.', 403);
+    }
+  }
+
   async googleLogin(credential: string) {
     if (!env.GOOGLE_CLIENT_ID) {
       throw new AppError('Google sign-in is not configured on the server', 503);
@@ -31,6 +37,9 @@ export class AuthService {
 
     const email = payload.email.toLowerCase();
     const existingUser = await userRepository.findByEmail(email);
+    if (existingUser) {
+      this.ensureAccountIsActive(existingUser);
+    }
     const user = existingUser
       ? await userRepository.update(existingUser.id, {
           emailVerified: true,
@@ -74,6 +83,8 @@ export class AuthService {
       throw new AppError('Invalid email or password', 401);
     }
 
+    this.ensureAccountIsActive(user);
+
     const isMatch = await comparePassword(input.password, user.password);
     if (!isMatch) {
       throw new AppError('Invalid email or password', 401);
@@ -103,6 +114,7 @@ export class AuthService {
     if (!user) {
       throw new AppError('User not found', 404);
     }
+    this.ensureAccountIsActive(user);
     return user;
   }
 
@@ -133,6 +145,8 @@ export class AuthService {
     if (!user) {
       throw new AppError('User not found', 404);
     }
+
+    this.ensureAccountIsActive(user);
 
     const token = generateToken({
       userId: user.id,

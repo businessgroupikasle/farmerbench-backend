@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyToken, TokenPayload } from '../utils/jwt';
 import { sendError } from '../utils/response';
+import { userRepository } from '../repositories/user.repository';
 
 declare global {
   namespace Express {
@@ -10,7 +11,7 @@ declare global {
   }
 }
 
-export const requireAuth = (req: Request, res: Response, next: NextFunction) => {
+export const requireAuth = async (req: Request, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -21,6 +22,13 @@ export const requireAuth = (req: Request, res: Response, next: NextFunction) => 
 
   try {
     const payload = verifyToken(token);
+    const user = await userRepository.findById(payload.userId);
+    if (!user) {
+      return sendError(res, 'User account no longer exists', 401);
+    }
+    if (user.status === 'Deactivated') {
+      return sendError(res, 'Your account has been deactivated. Please contact support.', 403);
+    }
     req.user = payload;
     next();
   } catch (error) {
