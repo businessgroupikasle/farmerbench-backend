@@ -1,0 +1,100 @@
+.crop-calendar-page {
+  background: #f7faf5;
+  min-height: 100%;
+}
+
+.crop-calendar-hero {
+  --crop-calendar-hero-image: none;
+  position: relative;
+  isolation: isolate;
+  min-height: clamp(230px, 28vw, 390px);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  background-image: var(--crop-calendar-hero-image);
+  background-position: center 48%;
+  background-size: cover;
+  color: #fff;
+}
+
+.crop-calendar-hero__shade {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(90deg, rgba(8, 45, 22, 0.84) 0%, rgba(10, 66, 25, 0.58) 44%, rgba(12, 77, 27, 0.08) 76%),
+    linear-gradient(0deg, rgba(39, 112, 16, 0.28), rgba(39, 112, 16, 0.04));
+}
+
+.crop-calendar-hero__content {
+  width: min(1180px, calc(100% - 40px));
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: clamp(18px, 2.4vw, 34px);
+  padding: 44px 0;
+}
+
+.crop-calendar-hero__icon {
+  width: clamp(74px, 8vw, 100px);
+  aspect-ratio: 1;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #16882f;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 12px 32px rgba(4, 37, 14, 0.2);
+}
+
+.crop-calendar-hero__copy {
+  text-shadow: 0 2px 12px rgba(3, 28, 11, 0.35);
+}
+
+.crop-calendar-hero h1 {
+  margin: 0 0 4px;
+  font-size: clamp(2rem, 4.1vw, 4rem);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+}
+
+.crop-calendar-hero__tagline {
+  margin: 0 0 10px;
+  font-size: clamp(1rem, 1.6vw, 1.45rem);
+  font-weight: 800;
+}
+
+.crop-calendar-hero__description {
+  margin: 0;
+  max-width: 620px;
+  font-size: clamp(0.84rem, 1.15vw, 1.02rem);
+  line-height: 1.55;
+  font-weight: 500;
+}
+
+@media (max-width: 640px) {
+  .crop-calendar-hero {
+    min-height: 250px;
+    background-position: 58% center;
+  }
+
+  .crop-calendar-hero__shade {
+    background: linear-gradient(90deg, rgba(7, 44, 20, 0.9) 0%, rgba(9, 61, 24, 0.72) 65%, rgba(12, 71, 26, 0.25) 100%);
+  }
+
+  .crop-calendar-hero__content {
+    width: min(100% - 28px, 1180px);
+    align-items: flex-start;
+    gap: 15px;
+  }
+
+  .crop-calendar-hero__icon {
+    width: 62px;
+  }
+
+  .crop-calendar-hero__icon svg {
+    width: 31px;
+    height: 31px;
+  }
+}

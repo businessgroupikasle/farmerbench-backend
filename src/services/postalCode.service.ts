@@ -1,10 +1,12 @@
-import { prisma } from '../config/database';
+﻿import { prisma } from '../config/database';
 import { env } from '../config/env';
 import { AppError } from '../utils/response';
 
 export interface PostalLocation {
   postalCode: string;
   city: string;
+  taluk: string;
+  taluks: string[];
   district: string;
   state: string;
   country: string;
@@ -27,6 +29,17 @@ const formatTitleCase = (val: string): string => {
     .join(' ');
 };
 
+const extractTaluks = (providerData: any, fallback = ''): string[] => {
+  const fallbackOffices = Array.isArray(providerData) ? providerData[0]?.PostOffice : null;
+  const governmentRecords = Array.isArray(providerData?.records) ? providerData.records : null;
+  const values = fallbackOffices
+    ? fallbackOffices.map((office: any) => cleanVal(office.Block))
+    : governmentRecords
+      ? governmentRecords.map((record: any) => cleanVal(record.taluk))
+      : [];
+  const unique = [...new Set(values.filter(Boolean))] as string[];
+  return unique.length ? unique : [fallback].filter(Boolean);
+};
 class PostalCodeService {
   async lookup(postalCode: string): Promise<PostalLocation> {
     if (!/^\d{6}$/.test(postalCode)) {
@@ -38,7 +51,8 @@ class PostalCodeService {
       const saved = await store.findUnique({ where: { postalCode } }).catch(() => null);
       if (saved && Date.now() - new Date(saved.lastVerifiedAt).getTime() < 30 * 86400000) {
         if (saved.district && saved.district.toUpperCase() !== 'NA') {
-          return { ...saved, postOffices: saved.postOffice ? saved.postOffice.split('|') : [] };
+          const cachedTaluks = extractTaluks(saved.providerData, saved.city || '');
+          return { ...saved, taluk: cachedTaluks[0] || saved.city || '', taluks: cachedTaluks, postOffices: saved.postOffice ? saved.postOffice.split('|') : [] };
         }
       }
     }
@@ -83,10 +97,13 @@ class PostalCodeService {
           ) {
             const poList = fallbackData[0].PostOffice;
             const names = [...new Set(poList.map((p: any) => p.Name).filter(Boolean))] as string[];
+            const taluks = [...new Set(poList.map((p: any) => cleanVal(p.Block)).filter(Boolean))] as string[];
             const firstPo = poList[0];
             const location: PostalLocation = {
               postalCode,
-              city: cleanVal(firstPo.Block) || cleanVal(firstPo.Division) || cleanVal(firstPo.District) || '',
+              city: cleanVal(firstPo.Division) || cleanVal(firstPo.District) || '',
+              taluk: taluks[0] || cleanVal(firstPo.Division) || '',
+              taluks: taluks.length ? taluks : [cleanVal(firstPo.Division)].filter(Boolean),
               district: cleanVal(firstPo.District) || cleanVal(firstPo.Division) || '',
               state: formatTitleCase(cleanVal(firstPo.State) || ''),
               country: 'India',
@@ -97,8 +114,8 @@ class PostalCodeService {
             if (store) {
               await store.upsert({
                 where: { postalCode },
-                create: { ...location, postOffices: undefined, postOffice: names.join('|'), providerData: fallbackData },
-                update: { ...location, postOffices: undefined, postOffice: names.join('|'), providerData: fallbackData, lastVerifiedAt: new Date() },
+                create: { ...location, taluk: undefined, taluks: undefined, postOffices: undefined, postOffice: names.join('|'), providerData: fallbackData },
+                update: { ...location, taluk: undefined, taluks: undefined, postOffices: undefined, postOffice: names.join('|'), providerData: fallbackData, lastVerifiedAt: new Date() },
               }).catch(() => undefined);
             }
 
@@ -117,12 +134,16 @@ class PostalCodeService {
     const first = records[0];
     const names = [...new Set(records.map((r) => r.officename || r.office_name).filter(Boolean))] as string[];
     const district = cleanVal(first.districtname) || cleanVal(first.district) || cleanVal(first.divisionname) || '';
-    const city = cleanVal(first.taluk) || cleanVal(first.divisionname) || district || '';
+    const taluks = [...new Set(records.map((record) => cleanVal(record.taluk)).filter(Boolean))] as string[];
+    const taluk = taluks[0] || '';
+    const city = cleanVal(first.divisionname) || district || taluk || '';
     const state = formatTitleCase(cleanVal(first.statename) || cleanVal(first.state_name) || '');
 
     const location: PostalLocation = {
       postalCode,
       city: city || district,
+      taluk: taluk || city || district,
+      taluks: taluks.length ? taluks : [city || district].filter(Boolean),
       district: district || city,
       state: state || 'India',
       country: 'India',
@@ -137,8 +158,8 @@ class PostalCodeService {
     if (store) {
       await store.upsert({
         where: { postalCode },
-        create: { ...location, postOffices: undefined, postOffice: names.join('|'), providerData: raw },
-        update: { ...location, postOffices: undefined, postOffice: names.join('|'), providerData: raw, lastVerifiedAt: new Date() },
+        create: { ...location, taluk: undefined, taluks: undefined, postOffices: undefined, postOffice: names.join('|'), providerData: raw },
+        update: { ...location, taluk: undefined, taluks: undefined, postOffices: undefined, postOffice: names.join('|'), providerData: raw, lastVerifiedAt: new Date() },
       }).catch(() => undefined);
     }
 
@@ -147,3 +168,7 @@ class PostalCodeService {
 }
 
 export const postalCodeService = new PostalCodeService();
+
+
+
+

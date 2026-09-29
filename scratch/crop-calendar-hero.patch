@@ -1,0 +1,171 @@
+diff --git a/src/pages/CropCalendarPage.tsx b/src/pages/CropCalendarPage.tsx
+new file mode 100644
+--- /dev/null
++++ b/src/pages/CropCalendarPage.tsx
+@@ -0,0 +1,30 @@
++import React from 'react';
++import { CalendarDays } from 'lucide-react';
++import farmHero from '../assets/farm-dev-hero.jpg';
++import './CropCalendarPage.css';
++
++export const CropCalendarPage: React.FC = () => (
++  <div className="crop-calendar-page">
++    <section
++      className="crop-calendar-hero"
++      style={{ '--crop-calendar-hero-image': `url(${farmHero})` } as React.CSSProperties}
++      aria-labelledby="crop-calendar-title"
++    >
++      <div className="crop-calendar-hero__shade" aria-hidden="true" />
++      <div className="crop-calendar-hero__content">
++        <div className="crop-calendar-hero__icon" aria-hidden="true">
++          <CalendarDays size={42} strokeWidth={2.5} />
++        </div>
++        <div className="crop-calendar-hero__copy">
++          <h1 id="crop-calendar-title">Crop Calendar</h1>
++          <p className="crop-calendar-hero__tagline">Plan Smart. Grow Better.</p>
++          <p className="crop-calendar-hero__description">
++            Get a customized crop calendar based on your location, crop, and season.
++          </p>
++        </div>
++      </div>
++    </section>
++  </div>
++);
++
++export default CropCalendarPage;
+diff --git a/src/pages/CropCalendarPage.css b/src/pages/CropCalendarPage.css
+new file mode 100644
+--- /dev/null
++++ b/src/pages/CropCalendarPage.css
+@@ -0,0 +1,99 @@
++.crop-calendar-page {
++  background: #f7faf5;
++  min-height: 100%;
++}
++
++.crop-calendar-hero {
++  --crop-calendar-hero-image: none;
++  position: relative;
++  isolation: isolate;
++  min-height: clamp(230px, 28vw, 390px);
++  overflow: hidden;
++  display: flex;
++  align-items: center;
++  background-image: var(--crop-calendar-hero-image);
++  background-position: center 48%;
++  background-size: cover;
++  color: #fff;
++}
++
++.crop-calendar-hero__shade {
++  position: absolute;
++  inset: 0;
++  z-index: -1;
++  background:
++    linear-gradient(90deg, rgba(8, 45, 22, 0.84) 0%, rgba(10, 66, 25, 0.58) 44%, rgba(12, 77, 27, 0.08) 76%),
++    linear-gradient(0deg, rgba(39, 112, 16, 0.28), rgba(39, 112, 16, 0.04));
++}
++
++.crop-calendar-hero__content {
++  width: min(1180px, calc(100% - 40px));
++  margin: 0 auto;
++  display: flex;
++  align-items: center;
++  gap: clamp(18px, 2.4vw, 34px);
++  padding: 44px 0;
++}
++
++.crop-calendar-hero__icon {
++  width: clamp(74px, 8vw, 100px);
++  aspect-ratio: 1;
++  flex: 0 0 auto;
++  display: grid;
++  place-items: center;
++  border-radius: 50%;
++  color: #16882f;
++  background: rgba(255, 255, 255, 0.96);
++  box-shadow: 0 12px 32px rgba(4, 37, 14, 0.2);
++}
++
++.crop-calendar-hero__copy {
++  text-shadow: 0 2px 12px rgba(3, 28, 11, 0.35);
++}
++
++.crop-calendar-hero h1 {
++  margin: 0 0 4px;
++  font-size: clamp(2rem, 4.1vw, 4rem);
++  font-weight: 800;
++  line-height: 1.05;
++  letter-spacing: -0.035em;
++}
++
++.crop-calendar-hero__tagline {
++  margin: 0 0 10px;
++  font-size: clamp(1rem, 1.6vw, 1.45rem);
++  font-weight: 800;
++}
++
++.crop-calendar-hero__description {
++  margin: 0;
++  max-width: 620px;
++  font-size: clamp(0.84rem, 1.15vw, 1.02rem);
++  line-height: 1.55;
++  font-weight: 500;
++}
++
++@media (max-width: 640px) {
++  .crop-calendar-hero {
++    min-height: 250px;
++    background-position: 58% center;
++  }
++
++  .crop-calendar-hero__shade {
++    background: linear-gradient(90deg, rgba(7, 44, 20, 0.9) 0%, rgba(9, 61, 24, 0.72) 65%, rgba(12, 71, 26, 0.25) 100%);
++  }
++
++  .crop-calendar-hero__content {
++    width: min(100% - 28px, 1180px);
++    align-items: flex-start;
++    gap: 15px;
++  }
++
++  .crop-calendar-hero__icon {
++    width: 62px;
++  }
++
++  .crop-calendar-hero__icon svg {
++    width: 31px;
++    height: 31px;
++  }
++}
+diff --git a/src/App.tsx b/src/App.tsx
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -29,6 +29,7 @@
+ const FarmConsultancyPage = lazy(() => import('./pages/FarmConsultancyPage'));
+ const CropDoctorPage = lazy(() => import('./pages/CropDoctorPage'));
++const CropCalendarPage = lazy(() => import('./pages/CropCalendarPage'));
+ const BlogPage = lazy(() => import('./pages/BlogPage'));
+@@ -136,6 +137,7 @@
+           <Route path="/services/crop-doctor" element={<CropDoctorPage />} />
+           <Route path="/crop-doctor" element={<CropDoctorPage />} />
++          <Route path="/crop-calendar" element={<CropCalendarPage />} />
+           <Route path="/products" element={<ProductsPage />} />
+diff --git a/src/components/home/HomeSmartHub.tsx b/src/components/home/HomeSmartHub.tsx
+--- a/src/components/home/HomeSmartHub.tsx
++++ b/src/components/home/HomeSmartHub.tsx
+@@ -65,7 +65,7 @@
+     description: 'Get crop-wise schedule for sowing, irrigation, fertilizer & harvesting.',
+     action: 'View Calendar',
+-    to: '/services/farm-development',
++    to: '/crop-calendar',
+     art: (
+diff --git a/src/components/common/Navbar.tsx b/src/components/common/Navbar.tsx
+--- a/src/components/common/Navbar.tsx
++++ b/src/components/common/Navbar.tsx
+@@ -161,7 +161,7 @@
+-                  <Link to="/services#crop-calendar" className="agriflow-dropdown-subitem">
++                  <Link to="/crop-calendar" className="agriflow-dropdown-subitem">
+@@ -318,7 +318,7 @@
+-                <Link to="/services#crop-calendar" onClick={() => setIsMobileMenuOpen(false)}><CalendarDays size={14} /> Crop Calendar</Link>
++                <Link to="/crop-calendar" onClick={() => setIsMobileMenuOpen(false)}><CalendarDays size={14} /> Crop Calendar</Link>
