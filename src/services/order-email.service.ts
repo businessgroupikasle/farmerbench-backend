@@ -70,11 +70,11 @@ const emailShell = (content: string) => `<!DOCTYPE html>
 <body style="margin:0;padding:20px;background:#f4f7f4;font-family:Arial,'Segoe UI',sans-serif;color:#1e293b;">
   <div style="max-width:680px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;box-shadow:0 4px 14px rgba(15,71,38,.08);">
     <div style="padding:26px 24px;text-align:center;background:linear-gradient(135deg,#0f4726,#15803d);color:#ffffff;">
-      <div style="font-size:26px;font-weight:800;">FarmerBench</div>
-      <div style="margin-top:6px;font-size:13px;color:#d1fae5;">AgriEra • Direct-to-Farmer Commerce & Services</div>
+      <div style="font-size:26px;font-weight:800;">Agriera</div>
+      <div style="margin-top:6px;font-size:13px;color:#d1fae5;">Agriera • Direct-to-Farmer Commerce & Services</div>
     </div>
     <div style="padding:26px 22px;">${content}</div>
-    <div style="padding:16px 22px;text-align:center;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8;">© ${new Date().getFullYear()} FarmerBench / AgriEra. All rights reserved.</div>
+    <div style="padding:16px 22px;text-align:center;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8;">© ${new Date().getFullYear()} Agriera. All rights reserved.</div>
   </div>
 </body></html>`;
 
@@ -176,7 +176,7 @@ export class OrderEmailService {
       const subject = `New Order Received – Order #${order.id}`;
       const html = emailShell(`
         <h1 style="margin:0 0 10px;color:#0f4726;font-size:24px;">New Order Received! 🚨</h1>
-        <p style="margin:0 0 18px;line-height:1.6;color:#475569;">A new order has been successfully placed on FarmerBench.</p>
+        <p style="margin:0 0 18px;line-height:1.6;color:#475569;">A new order has been successfully placed on Agriera.</p>
         <div style="padding:14px 16px;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;font-size:14px;line-height:1.8;">
           <strong>Order ID:</strong> #${escapeHtml(order.id)}<br><strong>Order date/time:</strong> ${formatDate(order.createdAt)}<br><strong>Order status:</strong> Confirmed<br><strong>Payment:</strong> ${paymentMethodLabel(order.paymentMethod)}<br><strong>Payment status:</strong> ${paymentStatusLabel(order)}
         </div>

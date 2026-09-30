@@ -39,7 +39,7 @@ export class EmailService {
       console.log('📨 [DEV SIMULATION EMAIL]');
       console.log(`To: ${options.to}`);
       console.log(`Subject: ${options.subject}`);
-      console.log(`From: "FarmerBench" <${env.GOOGLE_SMTP_EMAIL}>`);
+      console.log(`From: "Agriera" <${env.GOOGLE_SMTP_EMAIL}>`);
       if (options.text) {
         console.log(`Body:\n${options.text}`);
       }
@@ -49,7 +49,7 @@ export class EmailService {
 
     try {
       const info = await this.transporter.sendMail({
-        from: `"FarmerBench" <${env.GOOGLE_SMTP_EMAIL}>`,
+        from: `"Agriera" <${env.GOOGLE_SMTP_EMAIL}>`,
         to: options.to,
         subject: options.subject,
         html: options.html,
@@ -66,7 +66,7 @@ export class EmailService {
   }
 
   async sendRegistrationOtpEmail(to: string, otp: string, name: string) {
-    const subject = `🌾 ${otp} is your FarmerBench Verification Code`;
+    const subject = `🌾 ${otp} is your Agriera Verification Code`;
     const html = `
       <!DOCTYPE html>
       <html>
@@ -89,30 +89,30 @@ export class EmailService {
       <body>
         <div class="card">
           <div class="header">
-            <h1>FarmerBench</h1>
+            <h1>Agriera</h1>
             <p>Direct-to-Farmer Agricultural Commerce & Services</p>
           </div>
           <div class="content">
             <div class="greeting">Vanakkam, ${name || 'Farmer Friend'}!</div>
-            <div class="desc">Thank you for registering with FarmerBench. Please use the one-time verification code below to confirm your account and get started:</div>
+            <div class="desc">Thank you for registering with Agriera. Please use the one-time verification code below to confirm your account and get started:</div>
             <div class="otp-box">${otp}</div>
             <div class="validity">⏳ This OTP is valid for 5 minutes. Do not share this code with anyone.</div>
             <p style="font-size: 13px; color: #64748B;">If you did not request this code, please disregard this email.</p>
           </div>
           <div class="footer">
-            © ${new Date().getFullYear()} FarmerBench. All rights reserved. • AgriFlow Ecosystem
+            © ${new Date().getFullYear()} Agriera. All rights reserved. • AgriFlow Ecosystem
           </div>
         </div>
       </body>
       </html>
     `;
 
-    const text = `Vanakkam ${name}!\n\nYour FarmerBench OTP verification code is: ${otp}\n\nThis code expires in 5 minutes.\n\nBest regards,\nFarmerBench Team`;
+    const text = `Vanakkam ${name}!\n\nYour Agriera OTP verification code is: ${otp}\n\nThis code expires in 5 minutes.\n\nBest regards,\nAgriera Team`;
     return this.sendMail({ to, subject, html, text });
   }
 
   async sendLoginOtpEmail(to: string, otp: string, name: string) {
-    const subject = `🔐 ${otp} is your FarmerBench Login Code`;
+    const subject = `🔐 ${otp} is your Agriera Login Code`;
     const html = `
       <!DOCTYPE html>
       <html>
@@ -132,7 +132,7 @@ export class EmailService {
       <body>
         <div class="card">
           <div class="header">
-            <h1>FarmerBench</h1>
+            <h1>Agriera</h1>
             <p>Secure Account Access</p>
           </div>
           <div class="content">
@@ -142,19 +142,19 @@ export class EmailService {
             <div class="validity">⏳ Valid for 5 minutes. Never share this code.</div>
           </div>
           <div class="footer">
-            © ${new Date().getFullYear()} FarmerBench. All rights reserved.
+            © ${new Date().getFullYear()} Agriera. All rights reserved.
           </div>
         </div>
       </body>
       </html>
     `;
 
-    const text = `Hello ${name}!\n\nYour FarmerBench sign-in code is: ${otp}\n\nExpires in 5 minutes.`;
+    const text = `Hello ${name}!\n\nYour Agriera sign-in code is: ${otp}\n\nExpires in 5 minutes.`;
     return this.sendMail({ to, subject, html, text });
   }
 
   async sendPasswordResetOtpEmail(to: string, otp: string, name: string) {
-    const subject = `🔐 ${otp} is your FarmerBench Password Reset Code`;
+    const subject = `🔐 ${otp} is your Agriera Password Reset Code`;
     const html = `
       <!DOCTYPE html>
       <html>
@@ -177,69 +177,69 @@ export class EmailService {
       <body>
         <div class="card">
           <div class="header">
-            <h1>FarmerBench</h1>
+            <h1>Agriera</h1>
             <p>Password Reset Request</p>
           </div>
           <div class="content">
             <div class="greeting">Hello ${name || 'Farmer'},</div>
-            <div class="desc">We received a request to reset your FarmerBench account password. Please use the verification code below to set your new password:</div>
+            <div class="desc">We received a request to reset your Agriera account password. Please use the verification code below to set your new password:</div>
             <div class="otp-box">${otp}</div>
             <div class="validity">⏳ This code expires in 5 minutes. Do not share it with anyone.</div>
             <p style="font-size: 13px; color: #64748B;">If you did not request a password reset, you can safely ignore this email.</p>
           </div>
           <div class="footer">
-            © ${new Date().getFullYear()} FarmerBench. All rights reserved.
+            © ${new Date().getFullYear()} Agriera. All rights reserved.
           </div>
         </div>
       </body>
       </html>
     `;
 
-    const text = `Hello ${name}!\n\nYour FarmerBench password reset code is: ${otp}\n\nExpires in 5 minutes.`;
+    const text = `Hello ${name}!\n\nYour Agriera password reset code is: ${otp}\n\nExpires in 5 minutes.`;
     return this.sendMail({ to, subject, html, text });
   }
 
   async sendPasswordChangedNotificationEmail(to: string, name: string) {
-    const subject = `🔒 Your FarmerBench Password Has Been Changed`;
+    const subject = `🔒 Your Agriera Password Has Been Changed`;
     const html = `
       <div style="font-family: sans-serif; max-width: 500px; margin: auto; padding: 24px; border: 1px solid #E2E8F0; border-radius: 12px; background-color: #FFFFFF;">
         <h2 style="color: #0F4726; margin-top: 0;">Password Changed Successfully</h2>
         <p>Dear ${name || 'Farmer'},</p>
-        <p>Your FarmerBench account password was successfully updated on <strong>${new Date().toLocaleString()}</strong>.</p>
+        <p>Your Agriera account password was successfully updated on <strong>${new Date().toLocaleString()}</strong>.</p>
         <p>If you made this change, no further action is needed.</p>
         <p style="color: #DC2626; font-size: 13px;">If you did NOT perform this action, please contact our support immediately.</p>
         <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 20px 0;" />
-        <p style="font-size: 12px; color: #94A3B8;">FarmerBench Security Team</p>
+        <p style="font-size: 12px; color: #94A3B8;">Agriera Security Team</p>
       </div>
     `;
-    return this.sendMail({ to, subject, html, text: `Your FarmerBench password was changed successfully.` });
+    return this.sendMail({ to, subject, html, text: `Your Agriera password was changed successfully.` });
   }
 
   sendWelcomeEmail(to: string, name: string) {
-    const subject = `🌱 Welcome to FarmerBench, ${name}!`;
+    const subject = `🌱 Welcome to Agriera, ${name}!`;
     const html = `
       <div style="font-family: sans-serif; max-width: 500px; margin: auto; padding: 20px; border: 1px solid #E2E8F0; border-radius: 12px;">
-        <h2 style="color: #0F4726;">Welcome to FarmerBench!</h2>
+        <h2 style="color: #0F4726;">Welcome to Agriera!</h2>
         <p>Dear ${name},</p>
         <p>Your account is now fully verified. You can now shop bio-inputs, book soil tests, consult agronomists, and diagnose crop issues with our Crop Doctor.</p>
         <p>Happy Farming!</p>
         <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 20px 0;" />
-        <p style="font-size: 12px; color: #94A3B8;">FarmerBench Support Team</p>
+        <p style="font-size: 12px; color: #94A3B8;">Agriera Support Team</p>
       </div>
     `;
-    return this.sendMail({ to, subject, html, text: `Welcome to FarmerBench, ${name}!` });
+    return this.sendMail({ to, subject, html, text: `Welcome to Agriera, ${name}!` });
   }
 
   async sendTestSmtpEmail(to: string) {
-    const subject = `✅ FarmerBench SMTP Configuration Test`;
+    const subject = `✅ Agriera SMTP Configuration Test`;
     const html = `
       <div style="font-family: sans-serif; max-width: 500px; margin: auto; padding: 20px; border: 1px solid #16A34A; border-radius: 12px; background-color: #F0FDF4;">
         <h2 style="color: #15803D; margin-top: 0;">🎉 SMTP Test Successful!</h2>
-        <p>This is a test email sent from the FarmerBench backend server at <strong>${new Date().toISOString()}</strong>.</p>
+        <p>This is a test email sent from the Agriera backend server at <strong>${new Date().toISOString()}</strong>.</p>
         <p>Your SMTP credentials, transport encryption, and email dispatch pipeline are operating properly.</p>
       </div>
     `;
-    return this.sendMail({ to, subject, html, text: `FarmerBench SMTP test successful at ${new Date().toISOString()}` });
+    return this.sendMail({ to, subject, html, text: `Agriera SMTP test successful at ${new Date().toISOString()}` });
   }
 }
 
