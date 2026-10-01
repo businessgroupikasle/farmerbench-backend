@@ -169,7 +169,7 @@ export class ProductRepository {
         discountPrice: data.discountPrice,
         stock: data.stock,
         featured: data.featured,
-        images: data.images,
+        images: data.images ?? [],
         attributes: data.attributes || undefined,
         categoryId: data.categoryId,
         subcategoryId: data.subcategoryId,
@@ -182,12 +182,15 @@ export class ProductRepository {
   }
 
   async update(id: string, data: UpdateProductInput) {
+    const updateData: Prisma.ProductUncheckedUpdateInput = {
+      ...data,
+      images: data.images === null ? [] : data.images,
+      attributes: data.attributes !== undefined ? data.attributes || undefined : undefined,
+    };
+
     return prisma.product.update({
       where: { id },
-      data: {
-        ...data,
-        attributes: data.attributes !== undefined ? data.attributes || undefined : undefined,
-      },
+      data: updateData,
       include: {
         category: true,
         subcategory: true,
