@@ -18,6 +18,7 @@ import chatRoutes from './chat.routes';
 import blogRoutes from './blog.routes';
 import contactRoutes from './contact.routes';
 import expertRoutes from './expert.routes';
+import storeSettingsRoutes from './storeSettings.routes';
 
 const router = Router();
 
@@ -40,5 +41,6 @@ router.use('/chat', chatRoutes);
 router.use('/blogs', blogRoutes);
 router.use('/contacts', contactRoutes);
 router.use('/experts', expertRoutes);
+router.use('/store-settings', storeSettingsRoutes);
 
 export default router;

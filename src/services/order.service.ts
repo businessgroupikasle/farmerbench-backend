@@ -1,9 +1,10 @@
-﻿import { orderRepository } from '../repositories/order.repository';
+import { orderRepository } from '../repositories/order.repository';
 import { cartRepository } from '../repositories/cart.repository';
 import { productRepository } from '../repositories/product.repository';
 import { CreateOrderInput, UpdateOrderStatusInput, OrderStatus } from '@formerbench/shared';
 import { AppError } from '../utils/response';
 import { couponService } from './coupon.service';
+import { storeSettingsService } from './storeSettings.service';
 import { orderEmailService } from './order-email.service';
 import { getEffectivePrice } from '../utils/pricing';
 
@@ -160,7 +161,8 @@ export class OrderService {
     const itemsPrice = Number(
       orderItemsToCreate.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2)
     );
-    const shippingPrice = itemsPrice >= 5000 ? 0 : 80;
+    const shippingSettings = await storeSettingsService.get();
+    const shippingPrice = itemsPrice >= shippingSettings.freeShippingThreshold ? 0 : shippingSettings.standardShippingFee;
     const taxPrice = 0; // Displayed product prices are GST-inclusive.
     const couponResult = input.couponCode
       ? await couponService.calculate(input.couponCode, itemsPrice)

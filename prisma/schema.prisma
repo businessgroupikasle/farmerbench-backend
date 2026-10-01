@@ -457,3 +457,9 @@ model AgronomyExpert {
   @@index([territory])
   @@index([isActive])
 }
+model StoreSettings {
+  id                    String   @id @default("store")
+  standardShippingFee   Float    @default(80)
+  freeShippingThreshold Float    @default(5000)
+  updatedAt             DateTime @updatedAt
+}

@@ -5,6 +5,7 @@ import { validateBody, validateQuery } from '../middlewares/validate.middleware'
 import { CustomerQuerySchema, TestSmtpSchema } from '@formerbench/shared';
 import { couponService } from '../services/coupon.service';
 import { sendSuccess } from '../utils/response';
+import { storeSettingsService } from '../services/storeSettings.service';
 
 const router = Router();
 
@@ -30,6 +31,10 @@ router.patch('/coupons/:id', async (req, res, next) => {
 });
 router.delete('/coupons/:id', async (req, res, next) => {
   try { await couponService.remove(req.params.id); return sendSuccess(res, null, 'Coupon removed'); } catch (error) { next(error); }
+});
+
+router.put('/store-settings', async (req, res, next) => {
+  try { return sendSuccess(res, await storeSettingsService.update(req.body), 'Store settings updated'); } catch (error) { next(error); }
 });
 
 // System & Diagnostics
