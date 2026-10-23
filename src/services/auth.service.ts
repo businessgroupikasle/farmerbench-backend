@@ -80,7 +80,7 @@ export class AuthService {
   async login(input: LoginInput) {
     const user = await userRepository.findByEmail(input.email.toLowerCase());
     if (!user) {
-      throw new AppError('Invalid email or password', 401);
+      throw new AppError('No account found with this email. Create an account to continue.', 401);
     }
 
     this.ensureAccountIsActive(user);

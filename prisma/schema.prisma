@@ -461,5 +461,7 @@ model StoreSettings {
   id                    String   @id @default("store")
   standardShippingFee   Float    @default(80)
   freeShippingThreshold Float    @default(5000)
+  shippingPolicyEffectiveDate DateTime?
+  returnPolicyEffectiveDate   DateTime?
   updatedAt             DateTime @updatedAt
 }
