@@ -21,7 +21,8 @@ export class ProductController {
 
   async getFeaturedProducts(req: Request, res: Response, next: NextFunction) {
     try {
-      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 8;
+      const requested = req.query.limit ? parseInt(req.query.limit as string, 10) : 8;
+      const limit = Number.isFinite(requested) ? Math.min(Math.max(requested, 1), 50) : 8;
       const products = await productService.getFeaturedProducts(limit);
       return sendSuccess(res, products);
     } catch (error) {

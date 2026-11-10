@@ -55,7 +55,9 @@ export class PaymentService {
         notes: { orderId: order.id, userId: order.userId },
       });
     } catch (error: any) {
-      throw new AppError(`Razorpay payment error: ${error?.error?.description || error?.message || 'order creation failed'}`, 502);
+      // Provider details are logged server-side only
+      console.error('Razorpay order creation failed:', error?.error?.description || error?.message || error);
+      throw new AppError('Unable to start the online payment right now. Please try again in a moment.', 502);
     }
 
     await prisma.payment.upsert({

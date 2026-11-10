@@ -1,15 +1,16 @@
 import crypto from 'crypto';
-import jwt from 'jsonwebtoken';
+import type jwt from 'jsonwebtoken';
 import { env } from '../config/env';
 import { otpRepository } from '../repositories/otp.repository';
 import { userRepository } from '../repositories/user.repository';
 import { passwordResetTokenRepository } from '../repositories/passwordResetToken.repository';
 import { emailService } from './email.service';
 import { emitCustomerCreated } from '../socket';
-import { generateToken } from '../utils/jwt';
+import { issueSessionToken, signRegistrationToken, verifyRegistrationToken } from '../utils/jwt';
 import { hashPassword } from '../utils/password';
 import { AppError } from '../utils/response';
-import { CompleteRegistrationInput, RegisterOtpInput, OtpPurpose } from '@formerbench/shared';
+import { loginLockout } from '../utils/loginLockout';
+import { CompleteRegistrationInput, RegisterOtpInput, OtpPurpose, NewPasswordSchema } from '@formerbench/shared';
 
 export class OtpService {
   private hashOtp(otp: string): string {
@@ -24,6 +25,62 @@ export class OtpService {
       .createHash('sha256')
       .update(`${token}:${env.JWT_SECRET}`)
       .digest('hex');
+  }
+
+  /**
+   * OTP codes are secrets: anyone who can read server logs could use them to sign in.
+   * They are printed only in local development when LOG_OTP_TO_CONSOLE=true.
+   */
+  private devLogOtp(purpose: string, email: string, otp: string, expiresAt: Date) {
+    if (!env.logOtpToConsole) return;
+    console.log(`\n======================================================`);
+    console.log(`🔐 [DEV ONLY] ${purpose} OTP for ${email}: ${otp} (expires ${expiresAt.toLocaleTimeString()})`);
+    console.log(`======================================================\n`);
+  }
+
+  private otpMatches(otp: string, storedHash: string): boolean {
+    const computed = Buffer.from(this.hashOtp(otp), 'hex');
+    const stored = Buffer.from(storedHash, 'hex');
+    return computed.length === stored.length && crypto.timingSafeEqual(computed, stored);
+  }
+
+  /**
+   * Atomically reserves one verification attempt before comparing the code, so parallel
+   * requests can never exceed OTP_MAX_ATTEMPTS guesses, and consumes the OTP exactly once
+   * on success. Error messages/codes are unchanged for the frontend.
+   */
+  private async verifyOtpAttempt(
+    activeOtp: { id: string; otpHash: string },
+    otp: string,
+    options: { tooManyMessage: string; expiredMessage: string; withErrorCodes?: boolean }
+  ) {
+    const maxAttempts = env.OTP_MAX_ATTEMPTS;
+    const attemptsUsed = await otpRepository.reserveAttempt(activeOtp.id, maxAttempts);
+    if (attemptsUsed === null) {
+      await otpRepository.markConsumed(activeOtp.id);
+      throw new AppError(options.tooManyMessage, 400, options.withErrorCodes ? { code: 'OTP_MAX_ATTEMPTS' } : undefined);
+    }
+
+    if (!this.otpMatches(otp, activeOtp.otpHash)) {
+      const remaining = Math.max(0, maxAttempts - attemptsUsed);
+      if (options.withErrorCodes) {
+        if (remaining <= 0) {
+          await otpRepository.markConsumed(activeOtp.id);
+          throw new AppError(options.tooManyMessage, 400, { code: 'OTP_MAX_ATTEMPTS' });
+        }
+        throw new AppError(`Incorrect verification code. ${remaining} attempt(s) remaining.`, 400, {
+          code: 'OTP_INVALID',
+          remainingAttempts: remaining,
+        });
+      }
+      throw new AppError(`Incorrect verification code. ${remaining} attempt(s) remaining.`, 400);
+    }
+
+    // Single use: only one concurrent request can consume a valid code.
+    const consumed = await otpRepository.consumeIfActive(activeOtp.id);
+    if (!consumed) {
+      throw new AppError(options.expiredMessage, 400, options.withErrorCodes ? { code: 'OTP_EXPIRED' } : undefined);
+    }
   }
 
   private generateNumericOtp(length: number = 6): string {
@@ -70,11 +127,7 @@ export class OtpService {
       },
     });
 
-    console.log(`\n======================================================`);
-    console.log(`🔐 [REGISTRATION OTP GENERATED] for ${email}`);
-    console.log(`👉 OTP CODE: ${rawOtp}`);
-    console.log(`⏰ Expires at: ${expiresAt.toLocaleTimeString()}`);
-    console.log(`======================================================\n`);
+    this.devLogOtp('REGISTRATION', email, rawOtp, expiresAt);
 
     // Dispatch email asynchronously
     emailService.sendRegistrationOtpEmail(email, rawOtp, input.name || email.split('@')[0]).catch((err) => {
@@ -99,26 +152,12 @@ export class OtpService {
       throw new AppError('Invalid or expired verification code. Please request a new OTP.', 400);
     }
 
-    if (activeOtp.attempts >= env.OTP_MAX_ATTEMPTS) {
-      await otpRepository.markConsumed(activeOtp.id);
-      throw new AppError('Too many failed verification attempts. Please request a new OTP.', 400);
-    }
+    await this.verifyOtpAttempt(activeOtp, cleanOtp, {
+      tooManyMessage: 'Too many failed verification attempts. Please request a new OTP.',
+      expiredMessage: 'Invalid or expired verification code. Please request a new OTP.',
+    });
 
-    const computedHash = this.hashOtp(cleanOtp);
-    if (computedHash !== activeOtp.otpHash) {
-      await otpRepository.incrementAttempts(activeOtp.id);
-      const remainingAttempts = env.OTP_MAX_ATTEMPTS - (activeOtp.attempts + 1);
-      throw new AppError(`Incorrect verification code. ${remainingAttempts} attempt(s) remaining.`, 400);
-    }
-
-    // Mark OTP consumed
-    await otpRepository.markConsumed(activeOtp.id);
-
-    const registrationToken = jwt.sign(
-      { email: cleanEmail, purpose: 'REGISTRATION_COMPLETION' },
-      env.JWT_SECRET,
-      { expiresIn: '15m' }
-    );
+    const registrationToken = signRegistrationToken(cleanEmail);
 
     return {
       email: cleanEmail,
@@ -131,7 +170,7 @@ export class OtpService {
   async completeRegistration(input: CompleteRegistrationInput) {
     let tokenPayload: jwt.JwtPayload;
     try {
-      tokenPayload = jwt.verify(input.registrationToken, env.JWT_SECRET) as jwt.JwtPayload;
+      tokenPayload = verifyRegistrationToken(input.registrationToken);
     } catch {
       throw new AppError('Registration session has expired. Please verify your email again.', 400);
     }
@@ -176,12 +215,8 @@ export class OtpService {
       console.error('Failed to send welcome email:', err);
     });
 
-    // Generate JWT Auth token
-    const token = generateToken({
-      userId: finalUser.id,
-      email: finalUser.email,
-      role: finalUser.role,
-    });
+    // Generate JWT Auth token (bound to the new password)
+    const token = issueSessionToken(finalUser, passwordHash);
 
     return {
       user: {
@@ -235,11 +270,7 @@ export class OtpService {
       metadata: { userId: user.id, name: user.name },
     });
 
-    console.log(`\n======================================================`);
-    console.log(`🔐 [LOGIN OTP GENERATED] for ${email}`);
-    console.log(`👉 OTP CODE: ${rawOtp}`);
-    console.log(`⏰ Expires at: ${expiresAt.toLocaleTimeString()}`);
-    console.log(`======================================================\n`);
+    this.devLogOtp('LOGIN', email, rawOtp, expiresAt);
 
     emailService.sendLoginOtpEmail(email, rawOtp, user.name).catch((err) => {
       console.error('Failed to send login OTP email:', err);
@@ -263,30 +294,20 @@ export class OtpService {
       throw new AppError('Invalid or expired login code. Please request a new OTP.', 400);
     }
 
-    if (activeOtp.attempts >= env.OTP_MAX_ATTEMPTS) {
-      await otpRepository.markConsumed(activeOtp.id);
-      throw new AppError('Too many failed verification attempts. Please request a new login code.', 400);
-    }
-
-    const computedHash = this.hashOtp(cleanOtp);
-    if (computedHash !== activeOtp.otpHash) {
-      await otpRepository.incrementAttempts(activeOtp.id);
-      const remainingAttempts = env.OTP_MAX_ATTEMPTS - (activeOtp.attempts + 1);
-      throw new AppError(`Incorrect verification code. ${remainingAttempts} attempt(s) remaining.`, 400);
-    }
-
-    await otpRepository.markConsumed(activeOtp.id);
+    await this.verifyOtpAttempt(activeOtp, cleanOtp, {
+      tooManyMessage: 'Too many failed verification attempts. Please request a new login code.',
+      expiredMessage: 'Invalid or expired login code. Please request a new OTP.',
+    });
 
     const user = await userRepository.findByEmail(cleanEmail);
     if (!user) {
       throw new AppError('User account not found', 404);
     }
+    if (user.status === 'Deactivated') {
+      throw new AppError('Your account has been deactivated. Please contact support.', 403);
+    }
 
-    const token = generateToken({
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-    });
+    const token = issueSessionToken(user, user.password);
 
     return {
       user: {
@@ -426,32 +447,11 @@ export class OtpService {
       });
     }
 
-    if (activeOtp.attempts >= env.OTP_MAX_ATTEMPTS) {
-      await otpRepository.markConsumed(activeOtp.id);
-      throw new AppError('Too many incorrect attempts. Please request a new code.', 400, {
-        code: 'OTP_MAX_ATTEMPTS',
-      });
-    }
-
-    const computedHash = this.hashOtp(cleanOtp);
-    if (computedHash !== activeOtp.otpHash) {
-      await otpRepository.incrementAttempts(activeOtp.id);
-      const currentAttempts = activeOtp.attempts + 1;
-      if (currentAttempts >= env.OTP_MAX_ATTEMPTS) {
-        await otpRepository.markConsumed(activeOtp.id);
-        throw new AppError('Too many incorrect attempts. Please request a new code.', 400, {
-          code: 'OTP_MAX_ATTEMPTS',
-        });
-      }
-      const remaining = env.OTP_MAX_ATTEMPTS - currentAttempts;
-      throw new AppError(`Incorrect verification code. ${remaining} attempt(s) remaining.`, 400, {
-        code: 'OTP_INVALID',
-        remainingAttempts: remaining,
-      });
-    }
-
-    // Mark OTP consumed
-    await otpRepository.markConsumed(activeOtp.id);
+    await this.verifyOtpAttempt(activeOtp, cleanOtp, {
+      tooManyMessage: 'Too many incorrect attempts. Please request a new code.',
+      expiredMessage: 'This verification code has expired. Please request a new code.',
+      withErrorCodes: true,
+    });
 
     const user = await userRepository.findByEmail(cleanEmail);
     if (!user) {
@@ -485,8 +485,9 @@ export class OtpService {
     const rawToken = resetTokenInput.trim();
     const cleanPassword = newPasswordInput;
 
-    if (!cleanPassword || cleanPassword.length < 6) {
-      throw new AppError('Password must be at least 6 characters long.', 400);
+    const passwordCheck = NewPasswordSchema.safeParse(cleanPassword);
+    if (!passwordCheck.success) {
+      throw new AppError(passwordCheck.error.issues[0]?.message || 'Please choose a stronger password.', 400);
     }
 
     const tokenHash = this.hashResetToken(rawToken);
@@ -508,6 +509,9 @@ export class OtpService {
 
     // Invalidate any pending password reset OTPs
     await otpRepository.invalidatePending(tokenRecord.user.email, 'PASSWORD_RESET');
+
+    // Owner proved control of the mailbox: lift any temporary password-login lock
+    loginLockout.reset(tokenRecord.user.email);
 
     // Dispatch security confirmation email
     emailService.sendPasswordChangedNotificationEmail(tokenRecord.user.email, tokenRecord.user.name).catch((err) => {

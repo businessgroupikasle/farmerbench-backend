@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { serviceBookingRepository } from '../repositories/serviceBooking.repository';
 import { CreateServiceBookingInput, UpdateServiceBookingStatusInput, ServiceBookingQueryInput } from '@formerbench/shared';
 import { AppError } from '../utils/response';
@@ -5,7 +6,7 @@ import { emitBookingCreated, emitBookingUpdated } from '../socket';
 
 export class ServiceBookingService {
   private generateReferenceId(): string {
-    const randomDigits = Math.floor(100000 + Math.random() * 900000);
+    const randomDigits = crypto.randomInt(100000, 1000000);
     return `FB-SB-${randomDigits}`;
   }
 

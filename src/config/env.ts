@@ -6,7 +6,8 @@ import { z } from 'zod';
 dotenv.config();
 
 const envSchema = z.object({
-  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  // Safe default: an unset NODE_ENV behaves as production (no debug output, generic errors).
+  NODE_ENV: z.enum(['development', 'production', 'test']).default('production'),
   PORT: z.coerce.number().positive().default(5000),
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters long for production security'),
@@ -46,7 +47,40 @@ const envSchema = z.object({
   AI_PROVIDER: z.enum(['gemini', 'openai', 'groq', 'mock']).default('gemini'),
   AI_API_KEY: z.string().optional().default(''),
   AI_MODEL: z.string().default('gemini-1.5-flash'),
+
+  // Business-abuse limits (0 = unlimited)
+  // How many times one customer may redeem the same coupon (default unlimited = previous behaviour).
+  COUPON_MAX_USES_PER_USER: z.coerce.number().int().nonnegative().default(0),
+  // Maximum simultaneously open (pending/processing) Cash-on-Delivery orders per customer.
+  MAX_OPEN_COD_ORDERS: z.coerce.number().int().nonnegative().default(10),
+  // Daily cap on paid AI chatbot calls; beyond it the built-in rule-based replies are used.
+  AI_DAILY_REQUEST_LIMIT: z.coerce.number().int().nonnegative().default(2000),
+
+  // Reverse-proxy trust for client IP resolution (Express "trust proxy").
+  // Default trusts only proxies on loopback/private networks (Nginx on the same host,
+  // Docker bridge, VPC load balancers), so an X-Forwarded-For header sent directly by
+  // an internet client is ignored. Accepts "false", "true", a hop count, or a
+  // comma-separated list of addresses/subnets/presets.
+  TRUST_PROXY: z.string().default('loopback, linklocal, uniquelocal'),
+
+  // Development-only: print OTP codes and simulated email contents to the console.
+  // Has no effect unless NODE_ENV=development. Never enable in production.
+  LOG_OTP_TO_CONSOLE: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
 });
+
+const parseTrustProxy = (value: string): boolean | number | string[] => {
+  const normalized = value.trim().toLowerCase();
+  if (normalized === '' || normalized === 'false') return false;
+  if (normalized === 'true') return true;
+  if (/^\d+$/.test(normalized)) return Number(normalized);
+  return value
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+};
 
 const parseEnv = () => {
   const result = envSchema.safeParse(process.env);
@@ -63,6 +97,8 @@ const parseEnv = () => {
   return {
     ...result.data,
     corsOrigins,
+    trustProxy: parseTrustProxy(result.data.TRUST_PROXY),
+    logOtpToConsole: result.data.NODE_ENV === 'development' && result.data.LOG_OTP_TO_CONSOLE,
   };
 };
 

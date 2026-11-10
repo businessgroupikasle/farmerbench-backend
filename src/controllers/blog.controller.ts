@@ -1,11 +1,17 @@
 import { Request, Response, NextFunction } from 'express';
 import { blogService } from '../services/blog.service';
 import { sendSuccess } from '../utils/response';
+import { getClientIp } from '../middlewares/rateLimit.middleware';
 
 export class BlogController {
   async getBlogs(req: Request, res: Response, next: NextFunction) {
     try {
-      const result = await blogService.getBlogs(req.query as any);
+      const query: any = { ...req.query };
+      // Draft/archived posts are only listed for administrators
+      if (req.user?.role !== 'ADMIN') {
+        query.status = 'PUBLISHED';
+      }
+      const result = await blogService.getBlogs(query);
       return sendSuccess(res, {
         blogs: result.blogs,
         total: result.total,
@@ -20,7 +26,10 @@ export class BlogController {
 
   async getBlog(req: Request, res: Response, next: NextFunction) {
     try {
-      const blog = await blogService.getBlogByIdOrSlug(req.params.idOrSlug, true);
+      const blog = await blogService.getPublicBlog(req.params.idOrSlug, {
+        isAdmin: req.user?.role === 'ADMIN',
+        viewerKey: getClientIp(req),
+      });
       return sendSuccess(res, blog);
     } catch (error) {
       next(error);
@@ -29,7 +38,8 @@ export class BlogController {
 
   async getRelatedBlogs(req: Request, res: Response, next: NextFunction) {
     try {
-      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 3;
+      const requested = req.query.limit ? parseInt(req.query.limit as string, 10) : 3;
+      const limit = Number.isFinite(requested) ? Math.min(Math.max(requested, 1), 20) : 3;
       const blogs = await blogService.getRelatedBlogs(
         req.params.idOrSlug,
         req.query.category as string,

@@ -6,10 +6,13 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env (use a strong unique value)}
       POSTGRES_DB: ${POSTGRES_DB:-formerbench}
+    # Bound to loopback by default so the database is never reachable from the
+    # internet (Docker-published ports bypass UFW). The API container reaches
+    # Postgres over the internal compose network, not this published port.
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "${POSTGRES_BIND_ADDRESS:-127.0.0.1}:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -30,12 +33,17 @@ services:
     environment:
       NODE_ENV: production
       PORT: 5000
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-formerbench}?schema=public
-      JWT_SECRET: ${JWT_SECRET:-development_jwt_secret_key_must_be_at_least_32_characters_long_for_security}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/${POSTGRES_DB:-formerbench}?schema=public
+      # No default: a committed default would let anyone with the repo forge login tokens.
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set in .env - generate one with openssl rand -base64 48}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      TRUST_PROXY: ${TRUST_PROXY:-loopback, linklocal, uniquelocal}
+    # Bound to loopback by default: expose the API publicly only through the Nginx
+    # reverse proxy (TLS + headers). Set API_BIND_ADDRESS=0.0.0.0 only if you
+    # deliberately need direct access.
     ports:
-      - "5000:5000"
+      - "${API_BIND_ADDRESS:-127.0.0.1}:5000:5000"
     depends_on:
       postgres:
         condition: service_healthy

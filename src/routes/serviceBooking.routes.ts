@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { serviceBookingController } from '../controllers/serviceBooking.controller';
 import { requireAuth, requireAdmin, optionalAuth } from '../middlewares/auth.middleware';
 import { validateBody, validateQuery } from '../middlewares/validate.middleware';
+import { serviceBookingRateLimiter } from '../middlewares/rateLimit.middleware';
 import {
   CreateServiceBookingSchema,
   UpdateServiceBookingStatusSchema,
@@ -13,6 +14,7 @@ const router = Router();
 // Public creation route (links user id if authenticated)
 router.post(
   '/',
+  serviceBookingRateLimiter,
   optionalAuth,
   validateBody(CreateServiceBookingSchema),
   serviceBookingController.createBooking

@@ -1,8 +1,9 @@
 import { userRepository } from '../repositories/user.repository';
-import { RegisterInput, LoginInput, UpdateProfileInput, ChangePasswordInput } from '@formerbench/shared';
+import { LoginInput, UpdateProfileInput, ChangePasswordInput } from '@formerbench/shared';
 import { hashPassword, comparePassword } from '../utils/password';
-import { generateToken } from '../utils/jwt';
+import { issueSessionToken, MAX_SESSION_AGE_SECONDS, TokenPayload } from '../utils/jwt';
 import { AppError } from '../utils/response';
+import { loginLockout } from '../utils/loginLockout';
 import { OAuth2Client } from 'google-auth-library';
 import { env } from '../config/env';
 
@@ -37,8 +38,18 @@ export class AuthService {
 
     const email = payload.email.toLowerCase();
     const existingUser = await userRepository.findByEmail(email);
+    let passwordHash = existingUser?.password || '';
     if (existingUser) {
       this.ensureAccountIsActive(existingUser);
+
+      // Pre-hijack protection: an account whose email was never verified may have
+      // been created by someone else with this address. Google has now proven
+      // ownership, so discard any password set before verification (this also ends
+      // any sessions issued for it). The owner can set a new one via "Forgot password".
+      if (!existingUser.emailVerified && existingUser.password) {
+        await userRepository.updatePassword(existingUser.id, '');
+        passwordHash = '';
+      }
     }
     const user = existingUser
       ? await userRepository.update(existingUser.id, {
@@ -52,49 +63,32 @@ export class AuthService {
           avatarUrl: payload.picture || null,
         });
 
-    const token = generateToken({ userId: user.id, email: user.email, role: user.role });
-    return { user, token };
-  }
-  async register(input: RegisterInput) {
-    const existing = await userRepository.findByEmail(input.email.toLowerCase());
-    if (existing) {
-      throw new AppError('An account with this email already exists', 400);
-    }
-
-    const hashedPassword = await hashPassword(input.password);
-    const user = await userRepository.create({
-      ...input,
-      email: input.email.toLowerCase(),
-      password: hashedPassword,
-    });
-
-    const token = generateToken({
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-    });
-
+    const token = issueSessionToken(user, passwordHash);
     return { user, token };
   }
 
   async login(input: LoginInput) {
-    const user = await userRepository.findByEmail(input.email.toLowerCase());
+    const email = input.email.toLowerCase().trim();
+    loginLockout.assertNotLocked(email);
+
+    const user = await userRepository.findByEmail(email);
     if (!user) {
+      loginLockout.recordFailure(email);
       throw new AppError('No account found with this email. Create an account to continue.', 401);
     }
 
-    this.ensureAccountIsActive(user);
-
     const isMatch = await comparePassword(input.password, user.password);
     if (!isMatch) {
+      loginLockout.recordFailure(email);
       throw new AppError('Invalid email or password', 401);
     }
 
-    const token = generateToken({
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-    });
+    // Account status is only revealed to someone who knows the password.
+    this.ensureAccountIsActive(user);
+
+    loginLockout.reset(email);
+
+    const token = issueSessionToken(user, user.password);
 
     const userProfile = {
       id: user.id,
@@ -123,6 +117,10 @@ export class AuthService {
     return user;
   }
 
+  /**
+   * Changing the password ends every other session (their tokens are bound to the old
+   * password). A fresh token is returned so the current device stays signed in.
+   */
   async changePassword(userId: string, input: ChangePasswordInput) {
     const user = await userRepository.findByEmail((await userRepository.findById(userId))?.email || '');
     if (!user) {
@@ -137,22 +135,28 @@ export class AuthService {
     const newHash = await hashPassword(input.newPassword);
     await userRepository.updatePassword(userId, newHash);
 
-    return { message: 'Password updated successfully' };
+    const profile = await userRepository.findById(userId);
+    const token = issueSessionToken(user, newHash);
+
+    return { message: 'Password updated successfully', token, user: profile };
   }
 
-  async refreshToken(userId: string) {
-    const user = await userRepository.findById(userId);
-    if (!user) {
+  async refreshToken(session: TokenPayload) {
+    const authState = await userRepository.findAuthStateById(session.userId);
+    const user = await userRepository.findById(session.userId);
+    if (!user || !authState) {
       throw new AppError('User not found', 404);
     }
 
     this.ensureAccountIsActive(user);
 
-    const token = generateToken({
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-    });
+    // Refreshing keeps the original sign-in time, so a session cannot be extended forever.
+    const originalAuthAt = session.oat ?? session.iat ?? Math.floor(Date.now() / 1000);
+    if (Math.floor(Date.now() / 1000) - originalAuthAt > MAX_SESSION_AGE_SECONDS) {
+      throw new AppError('Your session has expired. Please sign in again.', 401);
+    }
+
+    const token = issueSessionToken(user, authState.password, originalAuthAt);
 
     return { user, token };
   }

@@ -9,24 +9,51 @@ import apiRouter from './routes';
 import { errorHandler } from './middlewares/error.middleware';
 import { initSocketIO } from './socket';
 import paymentWebhookRouter from './routes/payment.webhook.routes';
+import { apiSecurityHeaders, isAllowedOrigin, runStartupSecurityChecks, uploadResponseHeaders } from './config/security';
+import { SERVABLE_UPLOAD_EXTENSIONS } from './middlewares/upload.middleware';
+
+runStartupSecurityChecks();
 
 const app = express();
 const httpServer = http.createServer(app);
 
-// Initialize Socket.IO on the HTTP server instance
+// Resolve req.ip from X-Forwarded-For only when the request arrives from a trusted
+// reverse proxy (see TRUST_PROXY in config/env.ts). Prevents rate-limit bypass via
+// spoofed X-Forwarded-For headers sent directly by clients.
+app.set('trust proxy', env.trustProxy);
+app.disable('x-powered-by');
+
+// One-time production warning: if requests reach the API from a local/private
+// address without X-Forwarded-For, the reverse proxy is not forwarding the client
+// IP and all visitors would share one rate-limit bucket.
+let proxyHeaderWarningShown = false;
+const PRIVATE_ADDRESS = /^(::1$|::ffff:127\.|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::ffff:10\.|::ffff:192\.168\.|::ffff:172\.(1[6-9]|2\d|3[01])\.|f[cd])/i;
+app.use((req, _res, next) => {
+  if (
+    !proxyHeaderWarningShown &&
+    env.NODE_ENV === 'production' &&
+    req.path !== '/api/health' &&
+    !req.headers['x-forwarded-for'] &&
+    PRIVATE_ADDRESS.test(req.socket.remoteAddress || '')
+  ) {
+    proxyHeaderWarningShown = true;
+    console.warn(
+      '⚠️ [security] Request received from a private/loopback address without X-Forwarded-For. ' +
+        'If the API is behind Nginx, add: proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;'
+    );
+  }
+  next();
+});
+
+// Initialize Socket.IO on the HTTP server instance (authenticated admin room for PII events)
 initSocketIO(httpServer);
 
 // Security & Parsing Middlewares
+app.use(apiSecurityHeaders);
 app.use(
   cors({
-    origin: (requestOrigin, callback) => {
-      // Allow requests with no origin (like mobile apps, curl, or same-origin)
-      if (!requestOrigin) return callback(null, true);
-      if (env.corsOrigins.includes(requestOrigin) || env.corsOrigins.includes('*')) {
-        return callback(null, true);
-      }
-      return callback(null, true); // Permissive in dev to ensure seamless DX
-    },
+    // Only CORS_ORIGIN / FRONTEND_URL origins (plus local origins in development).
+    origin: (requestOrigin, callback) => callback(null, isAllowedOrigin(requestOrigin)),
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
@@ -47,7 +74,23 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-app.use('/uploads', express.static(uploadsDir));
+// Only image files are ever served from /uploads, as inert images (no HTML/SVG/script).
+app.use(
+  '/uploads',
+  (req, res, next) => {
+    const ext = path.extname(req.path).toLowerCase();
+    if (!SERVABLE_UPLOAD_EXTENSIONS.has(ext)) {
+      return res.status(404).json({ success: false, message: 'File not found' });
+    }
+    return next();
+  },
+  express.static(uploadsDir, {
+    dotfiles: 'deny',
+    index: false,
+    redirect: false,
+    setHeaders: (res) => uploadResponseHeaders(res),
+  })
+);
 
 // Health Check Endpoint
 app.get('/api/health', async (_req, res) => {
@@ -57,7 +100,6 @@ app.get('/api/health', async (_req, res) => {
     return res.status(200).json({
       status: 'healthy',
       timestamp: new Date().toISOString(),
-      environment: env.NODE_ENV,
       services: {
         database: 'connected',
         api: 'running',
@@ -66,12 +108,13 @@ app.get('/api/health', async (_req, res) => {
       },
     });
   } catch (error: any) {
+    // Details stay in server logs; clients only learn that the database is unavailable.
+    console.error('Health check: database unavailable:', error?.message || error);
     return res.status(503).json({
       status: 'unhealthy',
       timestamp: new Date().toISOString(),
       services: {
         database: 'disconnected',
-        error: error.message,
       },
     });
   }

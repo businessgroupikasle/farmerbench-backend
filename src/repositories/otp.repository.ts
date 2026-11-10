@@ -59,6 +59,30 @@ export class OtpRepository {
     });
   }
 
+  /**
+   * Atomically reserves one verification attempt (UPDATE ... WHERE attempts < max).
+   * Concurrent requests serialize on the row, so no more than maxAttempts can succeed.
+   * Returns the attempt count after reserving, or null when no attempt is left.
+   */
+  async reserveAttempt(id: string, maxAttempts: number): Promise<number | null> {
+    const reserved = await prisma.otp.updateMany({
+      where: { id, consumedAt: null, attempts: { lt: maxAttempts } },
+      data: { attempts: { increment: 1 } },
+    });
+    if (reserved.count === 0) return null;
+    const row = await prisma.otp.findUnique({ where: { id }, select: { attempts: true } });
+    return row?.attempts ?? maxAttempts;
+  }
+
+  /** Consumes the OTP only if still unconsumed; returns false if another request already used it. */
+  async consumeIfActive(id: string): Promise<boolean> {
+    const result = await prisma.otp.updateMany({
+      where: { id, consumedAt: null },
+      data: { consumedAt: new Date() },
+    });
+    return result.count === 1;
+  }
+
   async markConsumed(id: string) {
     return prisma.otp.update({
       where: { id },

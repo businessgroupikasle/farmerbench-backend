@@ -7,9 +7,37 @@ import { couponService } from './coupon.service';
 import { storeSettingsService } from './storeSettings.service';
 import { orderEmailService } from './order-email.service';
 import { getEffectivePrice } from '../utils/pricing';
+import { prisma } from '../config/database';
+import { env } from '../config/env';
 
 export class OrderService {
+  /** Business-abuse guards: open COD orders per customer and per-customer coupon reuse. */
+  private async enforceOrderLimits(userId: string, input: CreateOrderInput) {
+    if (input.paymentMethod === 'CASH_ON_DELIVERY' && env.MAX_OPEN_COD_ORDERS > 0) {
+      const openCodOrders = await prisma.order.count({
+        where: { userId, paymentMethod: 'CASH_ON_DELIVERY', orderStatus: { in: ['PENDING', 'PROCESSING'] } },
+      });
+      if (openCodOrders >= env.MAX_OPEN_COD_ORDERS) {
+        throw new AppError(
+          'You have too many open Cash on Delivery orders. Please wait for existing orders to be delivered, pay online, or contact support.',
+          429
+        );
+      }
+    }
+
+    if (input.couponCode && env.COUPON_MAX_USES_PER_USER > 0) {
+      const previousUses = await prisma.order.count({
+        where: { userId, couponCode: input.couponCode.trim().toUpperCase(), couponRedeemed: true },
+      });
+      if (previousUses >= env.COUPON_MAX_USES_PER_USER) {
+        throw new AppError('You have already used this coupon the maximum number of times.', 400);
+      }
+    }
+  }
+
   async createOrder(userId: string, input: CreateOrderInput) {
+    await this.enforceOrderLimits(userId, input);
+
     let orderItemsToCreate: {
       productId: string;
       title: string;

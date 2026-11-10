@@ -34,6 +34,14 @@ export class UserRepository {
     });
   }
 
+  /** Minimal state needed to authorize a request (includes the password hash for session binding). */
+  async findAuthStateById(id: string) {
+    return prisma.user.findUnique({
+      where: { id },
+      select: { id: true, email: true, role: true, status: true, password: true },
+    });
+  }
+
   async create(data: {
     email: string;
     name: string;

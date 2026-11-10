@@ -31,9 +31,9 @@ export class AdminService {
   async createCustomer(data: {
     name: string;
     email: string;
-    phone?: string;
-    location?: string;
-    crops?: string;
+    phone?: string | null;
+    location?: string | null;
+    crops?: string | null;
     status?: string;
   }) {
     const existing = await userRepository.findByEmail(data.email);
@@ -59,17 +59,20 @@ export class AdminService {
 
   async updateCustomer(id: string, data: {
     name?: string;
-    phone?: string;
-    location?: string;
-    crops?: string;
+    phone?: string | null;
+    location?: string | null;
+    crops?: string | null;
     status?: string;
   }) {
     const customer = await userRepository.findById(id);
-    if (!customer) {
+    // This endpoint manages customers only; administrator accounts cannot be modified through it.
+    if (!customer || customer.role !== 'CUSTOMER') {
       throw new AppError('Customer not found', 404);
     }
 
-    return userRepository.update(id, data);
+    // Explicit allow-list: role, password, email and verification status are never updatable here.
+    const { name, phone, location, crops, status } = data;
+    return userRepository.update(id, { name, phone, location, crops, status });
   }
 
   async testSmtp(recipientEmail: string) {

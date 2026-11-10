@@ -1,8 +1,26 @@
 import nodemailer from 'nodemailer';
 import { env } from '../config/env';
+import { maskEmail } from '../utils/mask';
+
+/** User-supplied values (e.g. names) must be escaped before going into email HTML. */
+const escapeHtml = (value: unknown) =>
+  String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+
+/** Single-line, length-limited name for subject lines. */
+const plainName = (value: unknown) =>
+  String(value ?? '')
+    .replace(/[\r\n\t<>]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 60);
 
 export class EmailService {
-  private transporter: nodemailer.Transporter | null = null;
+  private transporter: ReturnType<typeof nodemailer.createTransport> | null = null;
   private isConfigured: boolean = false;
 
   constructor() {
@@ -15,7 +33,9 @@ export class EmailService {
         this.transporter = nodemailer.createTransport({
           host: env.GOOGLE_SMTP_HOST,
           port: env.GOOGLE_SMTP_PORT,
-          secure: false,
+          // 465 = implicit TLS; otherwise STARTTLS is mandatory (never send credentials/OTPs in clear text)
+          secure: env.GOOGLE_SMTP_PORT === 465,
+          requireTLS: env.GOOGLE_SMTP_PORT !== 465,
           auth: {
             user: env.GOOGLE_SMTP_EMAIL,
             pass: env.GOOGLE_SMTP_APP_PASSWORD,
@@ -28,22 +48,30 @@ export class EmailService {
         this.isConfigured = false;
       }
     } else {
-      console.log('ℹ️ Nodemailer SMTP running in Dev Simulation Mode (No SMTP credentials provided in .env). OTPs & notifications will be logged to console.');
+      console.log(
+        'ℹ️ Nodemailer SMTP running in Dev Simulation Mode (No SMTP credentials provided in .env). ' +
+          'Email contents are hidden; set LOG_OTP_TO_CONSOLE=true (development only) to print them.'
+      );
       this.isConfigured = false;
     }
   }
 
   async sendMail(options: { to: string; subject: string; html: string; text?: string }) {
     if (!this.isConfigured || !this.transporter) {
-      console.log('\n======================================================');
-      console.log('📨 [DEV SIMULATION EMAIL]');
-      console.log(`To: ${options.to}`);
-      console.log(`Subject: ${options.subject}`);
-      console.log(`From: "Agriera" <${env.GOOGLE_SMTP_EMAIL}>`);
-      if (options.text) {
-        console.log(`Body:\n${options.text}`);
+      // Subjects and bodies can contain OTP codes, so print them only in local
+      // development with LOG_OTP_TO_CONSOLE=true.
+      if (env.logOtpToConsole) {
+        console.log('\n======================================================');
+        console.log('📨 [DEV SIMULATION EMAIL]');
+        console.log(`To: ${options.to}`);
+        console.log(`Subject: ${options.subject}`);
+        if (options.text) {
+          console.log(`Body:\n${options.text}`);
+        }
+        console.log('======================================================\n');
+      } else {
+        console.log(`📨 [EMAIL NOT SENT – SMTP not configured] to ${maskEmail(options.to)} (content hidden)`);
       }
-      console.log('======================================================\n');
       return { messageId: `dev-sim-${Date.now()}`, simulated: true };
     }
 
@@ -55,12 +83,10 @@ export class EmailService {
         html: options.html,
         text: options.text,
       });
-      console.log(`✅ Email sent successfully to ${options.to} (MessageId: ${info.messageId})`);
+      console.log(`✅ Email sent successfully to ${maskEmail(options.to)} (MessageId: ${info.messageId})`);
       return info;
     } catch (error: any) {
-      console.error(`❌ Failed to send email via SMTP to ${options.to}:`, error.message);
-      // Fallback log so dev flow is never broken
-      console.log(`⚠️ Dev Fallback Content for ${options.to}: ${options.subject}`);
+      console.error(`❌ Failed to send email via SMTP to ${maskEmail(options.to)}:`, error.message);
       throw error;
     }
   }
@@ -93,7 +119,7 @@ export class EmailService {
             <p>Direct-to-Farmer Agricultural Commerce & Services</p>
           </div>
           <div class="content">
-            <div class="greeting">Vanakkam, ${name || 'Farmer Friend'}!</div>
+            <div class="greeting">Vanakkam, ${escapeHtml(name || 'Farmer Friend')}!</div>
             <div class="desc">Thank you for registering with Agriera. Please use the one-time verification code below to confirm your account and get started:</div>
             <div class="otp-box">${otp}</div>
             <div class="validity">⏳ This OTP is valid for 5 minutes. Do not share this code with anyone.</div>
@@ -137,7 +163,7 @@ export class EmailService {
           </div>
           <div class="content">
             <h2 style="font-size: 18px; margin-top: 0;">Sign In Verification</h2>
-            <p style="font-size: 14px; color: #64748B;">Hello ${name || 'Farmer'}, here is your one-time passcode to sign into your account:</p>
+            <p style="font-size: 14px; color: #64748B;">Hello ${escapeHtml(name || 'Farmer')}, here is your one-time passcode to sign into your account:</p>
             <div class="otp-box">${otp}</div>
             <div class="validity">⏳ Valid for 5 minutes. Never share this code.</div>
           </div>
@@ -181,7 +207,7 @@ export class EmailService {
             <p>Password Reset Request</p>
           </div>
           <div class="content">
-            <div class="greeting">Hello ${name || 'Farmer'},</div>
+            <div class="greeting">Hello ${escapeHtml(name || 'Farmer')},</div>
             <div class="desc">We received a request to reset your Agriera account password. Please use the verification code below to set your new password:</div>
             <div class="otp-box">${otp}</div>
             <div class="validity">⏳ This code expires in 5 minutes. Do not share it with anyone.</div>
@@ -204,7 +230,7 @@ export class EmailService {
     const html = `
       <div style="font-family: sans-serif; max-width: 500px; margin: auto; padding: 24px; border: 1px solid #E2E8F0; border-radius: 12px; background-color: #FFFFFF;">
         <h2 style="color: #0F4726; margin-top: 0;">Password Changed Successfully</h2>
-        <p>Dear ${name || 'Farmer'},</p>
+        <p>Dear ${escapeHtml(name || 'Farmer')},</p>
         <p>Your Agriera account password was successfully updated on <strong>${new Date().toLocaleString()}</strong>.</p>
         <p>If you made this change, no further action is needed.</p>
         <p style="color: #DC2626; font-size: 13px;">If you did NOT perform this action, please contact our support immediately.</p>
@@ -216,11 +242,11 @@ export class EmailService {
   }
 
   sendWelcomeEmail(to: string, name: string) {
-    const subject = `🌱 Welcome to Agriera, ${name}!`;
+    const subject = `🌱 Welcome to Agriera, ${plainName(name)}!`;
     const html = `
       <div style="font-family: sans-serif; max-width: 500px; margin: auto; padding: 20px; border: 1px solid #E2E8F0; border-radius: 12px;">
         <h2 style="color: #0F4726;">Welcome to Agriera!</h2>
-        <p>Dear ${name},</p>
+        <p>Dear ${escapeHtml(name)},</p>
         <p>Your account is now fully verified. You can now shop bio-inputs, book soil tests, consult agronomists, and diagnose crop issues with our Crop Doctor.</p>
         <p>Happy Farming!</p>
         <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 20px 0;" />

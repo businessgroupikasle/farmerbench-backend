@@ -154,7 +154,7 @@ export class ReviewRepository {
 
   async findAll(params: { page?: number; limit?: number }) {
     const page = Number(params.page) > 0 ? Number(params.page) : 1;
-    const limit = Number(params.limit) > 0 ? Number(params.limit) : 20;
+    const limit = Number(params.limit) > 0 ? Math.min(Math.floor(Number(params.limit)), 100) : 20;
     const skip = (page - 1) * limit;
 
     const [reviews, total] = await Promise.all([

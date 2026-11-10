@@ -16,15 +16,6 @@ export class AuthController {
       next(error);
     }
   }
-  async register(req: Request, res: Response, next: NextFunction) {
-    try {
-      const result = await authService.register(req.body);
-      return sendSuccess(res, result, 'User registered successfully', 201);
-    } catch (error) {
-      next(error);
-    }
-  }
-
   async login(req: Request, res: Response, next: NextFunction) {
     try {
       const result = await authService.login(req.body);
@@ -129,7 +120,7 @@ export class AuthController {
 
   async refreshToken(req: Request, res: Response, next: NextFunction) {
     try {
-      const result = await authService.refreshToken(req.user!.userId);
+      const result = await authService.refreshToken(req.user!);
       return sendSuccess(res, result, 'Token refreshed successfully');
     } catch (error) {
       next(error);

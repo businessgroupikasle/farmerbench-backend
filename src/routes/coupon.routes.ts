@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { couponService } from '../services/coupon.service';
 import { sendSuccess } from '../utils/response';
+import { couponValidateRateLimiter } from '../middlewares/rateLimit.middleware';
 
 const router = Router();
 
@@ -8,7 +9,7 @@ router.get('/homepage-offer', async (_req, res, next) => {
   try { return sendSuccess(res, await couponService.getHomepageOffer()); } catch (error) { next(error); }
 });
 
-router.post('/validate', async (req, res, next) => {
+router.post('/validate', couponValidateRateLimiter, async (req, res, next) => {
   try {
     const subtotal = Number(req.body.subtotal);
     if (typeof req.body.code !== 'string' || !Number.isFinite(subtotal) || subtotal < 0) return res.status(400).json({ success: false, message: 'Valid code and subtotal are required' });

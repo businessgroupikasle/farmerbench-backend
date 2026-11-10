@@ -1,4 +1,6 @@
+import { randomInt } from 'crypto';
 import { prisma } from '../config/database';
+import { AppError } from '../utils/response';
 import { CreateOrderInput, OrderStatus, PaymentStatus } from '@formerbench/shared';
 
 export class OrderRepository {
@@ -67,7 +69,7 @@ export class OrderRepository {
               amount: data.totalPrice,
               method: data.paymentMethod,
               status: 'PENDING',
-              transactionId: `TXN-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+              transactionId: `TXN-${Date.now()}-${randomInt(0, 10000)}`,
             },
           },
         },
@@ -116,7 +118,15 @@ export class OrderRepository {
           }
         }
         if (data.couponCode) {
-          await tx.coupon.update({ where: { code: data.couponCode }, data: { usageCount: { increment: 1 } } });
+          // Atomic check-and-increment: concurrent orders can never push a coupon past its usage limit.
+          const redeemed = await tx.$executeRaw`
+            UPDATE "Coupon"
+            SET "usageCount" = "usageCount" + 1, "updatedAt" = NOW()
+            WHERE "code" = ${data.couponCode}
+              AND ("usageLimit" IS NULL OR "usageCount" < "usageLimit")`;
+          if (redeemed !== 1) {
+            throw new AppError('This coupon usage limit has been reached', 409);
+          }
           await tx.order.update({ where: { id: order.id }, data: { couponRedeemed: true } });
         }
       }
@@ -163,7 +173,7 @@ export class OrderRepository {
 
   async findAll(params: { page?: number | string; limit?: number | string; status?: OrderStatus }) {
     const page = Number(params.page) > 0 ? Number(params.page) : 1;
-    const limit = Number(params.limit) > 0 ? Number(params.limit) : 15;
+    const limit = Number(params.limit) > 0 ? Math.min(Math.floor(Number(params.limit)), 100) : 15;
     const skip = (page - 1) * limit;
 
     const where = {

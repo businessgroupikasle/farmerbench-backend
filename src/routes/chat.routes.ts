@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { chatController } from '../controllers/chat.controller';
-import { createRateLimiter } from '../middlewares/rateLimit.middleware';
+import { createRateLimiter, getClientIp } from '../middlewares/rateLimit.middleware';
 
 const router = Router();
 
@@ -9,14 +9,7 @@ const chatRateLimiter = createRateLimiter({
   windowMs: 60 * 1000,
   max: 25,
   message: 'You have sent too many messages in a short time.',
-  keyGenerator: (req) => {
-    return (
-      (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
-      req.socket.remoteAddress ||
-      req.ip ||
-      'anonymous'
-    );
-  },
+  keyGenerator: (req) => getClientIp(req),
 });
 
 router.post('/', chatRateLimiter, (req, res) => chatController.sendMessage(req, res));

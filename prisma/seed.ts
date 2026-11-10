@@ -1,9 +1,34 @@
 import { PrismaClient, Role } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
+import 'dotenv/config';
 
 const prisma = new PrismaClient();
 
+/**
+ * The admin password is never hardcoded. Provide SEED_ADMIN_PASSWORD, or a strong
+ * random one is generated and printed once to this terminal.
+ */
+const resolveSeedAdminPassword = () => {
+  const provided = process.env.SEED_ADMIN_PASSWORD?.trim();
+  if (provided) {
+    if (provided.length < 12) {
+      throw new Error('SEED_ADMIN_PASSWORD must be at least 12 characters long.');
+    }
+    return { password: provided, generated: false };
+  }
+  return { password: crypto.randomBytes(18).toString('base64url'), generated: true };
+};
+
 async function main() {
+  // This seed DELETES all users, orders and products. Never run it against production by accident.
+  if (process.env.NODE_ENV === 'production' && process.env.ALLOW_PRODUCTION_SEED !== 'true') {
+    throw new Error(
+      'Refusing to run the seed with NODE_ENV=production: it deletes all existing data. ' +
+        'Set ALLOW_PRODUCTION_SEED=true only if you really intend to wipe this database.'
+    );
+  }
+
   console.log('🌱 Starting FarmerBench database seed...');
 
   // 1. Clean existing records in correct relation order
@@ -24,11 +49,13 @@ async function main() {
   console.log('🧹 Cleaned existing database records.');
 
   // 2. Create Super Admin User Only
-  const defaultPassword = await bcrypt.hash('AgriEra@2026', 10);
+  const seedAdmin = resolveSeedAdminPassword();
+  const seedAdminEmail = (process.env.SEED_ADMIN_EMAIL || 'admin@agriera.in').toLowerCase().trim();
+  const defaultPassword = await bcrypt.hash(seedAdmin.password, 12);
 
   const admin = await prisma.user.create({
     data: {
-      email: 'admin@agriera.in',
+      email: seedAdminEmail,
       name: 'Amar (Super Admin)',
       password: defaultPassword,
       role: Role.ADMIN,
@@ -41,7 +68,11 @@ async function main() {
     },
   });
 
-  console.log('👑 Created Super Admin (admin@agriera.in).');
+  console.log(`👑 Created Super Admin (${seedAdminEmail}).`);
+  if (seedAdmin.generated) {
+    console.log('🔑 Generated one-time admin password (store it in your password manager, it is not saved anywhere):');
+    console.log(`   ${seedAdmin.password}`);
+  }
 
   // 3. Create the admin catalog category and subcategory hierarchy
   const categorySeedData = [

@@ -17,6 +17,17 @@ export class HeroBannerService {
     if (!banner) throw new AppError('Hero banner not found', 404);
     return banner;
   }
+  async getPublicById(id: string) {
+    const banner = await heroBannerRepository.findById(id);
+    const now = new Date();
+    const live =
+      banner &&
+      banner.isActive &&
+      (!banner.startsAt || banner.startsAt <= now) &&
+      (!banner.endsAt || banner.endsAt >= now);
+    if (!live) throw new AppError('Hero banner not found', 404);
+    return banner;
+  }
   create(input: CreateHeroBannerInput) { return heroBannerRepository.create(normalize(input) as any); }
   async update(id: string, input: UpdateHeroBannerInput) {
     await this.get(id);

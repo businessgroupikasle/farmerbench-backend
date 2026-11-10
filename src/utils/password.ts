@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 
-const SALT_ROUNDS = 10;
+// New hashes use cost 12. Existing cost-10 hashes keep verifying normally.
+const SALT_ROUNDS = 12;
 
 export const hashPassword = async (password: string): Promise<string> => {
   return bcrypt.hash(password, SALT_ROUNDS);

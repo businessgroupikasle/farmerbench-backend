@@ -1,21 +1,54 @@
 import { Server as SocketIOServer, Socket } from 'socket.io';
 import { Server as HttpServer } from 'http';
-import { env } from '../config/env';
+import { isAllowedOrigin } from '../config/security';
+import { authenticateToken } from '../middlewares/auth.middleware';
 
 let io: SocketIOServer | null = null;
+
+/**
+ * Events carrying customer personal data (names, emails, phones, messages) are
+ * delivered only to sockets authenticated as an active ADMIN. Public catalogue
+ * events (products, categories) are still broadcast to every visitor.
+ */
+const ADMIN_ROOM = 'admins';
+
+const authenticateSocket = async (socket: Socket, next: (err?: Error) => void) => {
+  try {
+    const rawToken = socket.handshake.auth?.token;
+    const token = typeof rawToken === 'string' ? rawToken.replace(/^Bearer\s+/i, '').trim() : '';
+    if (token) {
+      // Same checks as HTTP requests: DB role/status and password-bound session.
+      const result = await authenticateToken(token);
+      if (result.ok) {
+        socket.data.userId = result.user.userId;
+        socket.data.role = result.user.role;
+      }
+    }
+  } catch {
+    // Invalid/expired token: continue as an anonymous (public events only) connection.
+  }
+  next();
+};
 
 export const initSocketIO = (httpServer: HttpServer): SocketIOServer => {
   io = new SocketIOServer(httpServer, {
     cors: {
-      origin: env.corsOrigins,
+      origin: (origin, callback) => callback(null, isAllowedOrigin(origin)),
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
       credentials: true,
     },
     pingTimeout: 60000,
   });
 
+  io.use((socket, next) => {
+    void authenticateSocket(socket, next);
+  });
+
   io.on('connection', (socket: Socket) => {
-    console.log(`🔌 Client connected to Socket.IO: ${socket.id}`);
+    if (socket.data.role === 'ADMIN') {
+      socket.join(ADMIN_ROOM);
+    }
+    console.log(`🔌 Client connected to Socket.IO: ${socket.id}${socket.data.role === 'ADMIN' ? ' (admin)' : ''}`);
 
     socket.on('disconnect', (reason) => {
       console.log(`🔌 Client disconnected from Socket.IO: ${socket.id} (${reason})`);
@@ -47,8 +80,8 @@ export const emitCustomerCreated = (customer: {
   createdAt: string | Date;
 }) => {
   if (!io) return;
-  console.log(`📢 Broadcasting Socket.IO event 'customer:created' for: ${customer.name}`);
-  io.emit('customer:created', customer);
+  console.log(`📢 Sending Socket.IO event 'customer:created' to admins (${customer.id})`);
+  io.to(ADMIN_ROOM).emit('customer:created', customer);
 };
 
 export const emitProductCreated = (product: any) => {
@@ -89,23 +122,23 @@ export const emitCategoryDeleted = (payload: { id: string }) => {
 
 export const emitBookingCreated = (booking: any) => {
   if (!io) return;
-  console.log(`📢 Broadcasting Socket.IO event 'booking:created': ${booking.serviceName} (${booking.bookingReference})`);
-  io.emit('booking:created', booking);
+  console.log(`📢 Sending Socket.IO event 'booking:created' to admins: ${booking.serviceName} (${booking.bookingReference})`);
+  io.to(ADMIN_ROOM).emit('booking:created', booking);
 };
 
 export const emitBookingUpdated = (booking: any) => {
   if (!io) return;
-  console.log(`📢 Broadcasting Socket.IO event 'booking:updated': ${booking.bookingReference} status -> ${booking.status}`);
-  io.emit('booking:updated', booking);
+  console.log(`📢 Sending Socket.IO event 'booking:updated' to admins: ${booking.bookingReference} status -> ${booking.status}`);
+  io.to(ADMIN_ROOM).emit('booking:updated', booking);
 };
 
 
 export const emitContactCreated = (contact: any) => {
   if (!io) return;
-  io.emit('contact:created', contact);
+  io.to(ADMIN_ROOM).emit('contact:created', contact);
 };
 
 export const emitContactUpdated = (contact: any) => {
   if (!io) return;
-  io.emit('contact:updated', contact);
+  io.to(ADMIN_ROOM).emit('contact:updated', contact);
 };

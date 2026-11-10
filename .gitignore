@@ -37,3 +37,6 @@ Thumbs.db
 # Prisma
 apps/api/prisma/*.db
 apps/api/prisma/*.db-journal
+
+# Local one-off scripts (may contain test credentials)
+scratch/

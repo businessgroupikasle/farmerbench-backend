@@ -24,6 +24,30 @@ export interface AIServiceResponse {
   providerUsed: string;
 }
 
+// Daily budget for paid AI provider calls (per process, resets at UTC midnight).
+let aiBudgetDay = '';
+let aiBudgetUsed = 0;
+let aiBudgetWarned = false;
+const consumeDailyAiBudget = (): boolean => {
+  const limit = env.AI_DAILY_REQUEST_LIMIT;
+  if (limit <= 0) return true;
+  const today = new Date().toISOString().slice(0, 10);
+  if (today !== aiBudgetDay) {
+    aiBudgetDay = today;
+    aiBudgetUsed = 0;
+    aiBudgetWarned = false;
+  }
+  if (aiBudgetUsed >= limit) {
+    if (!aiBudgetWarned) {
+      aiBudgetWarned = true;
+      console.warn(`[security] Daily AI request limit (${limit}) reached; using rule-based chatbot replies until tomorrow.`);
+    }
+    return false;
+  }
+  aiBudgetUsed += 1;
+  return true;
+};
+
 export class AIService {
   private provider: string;
   private apiKey: string;
@@ -103,8 +127,9 @@ RESPONSE STYLE:
   ): Promise<AIServiceResponse> {
     const systemPrompt = this.buildSystemPrompt(products);
 
-    // If no API key configured or provider is 'mock', use the intelligent local agricultural fallback
-    if (!this.apiKey || this.provider === 'mock') {
+    // If no API key configured or provider is 'mock', use the intelligent local agricultural fallback.
+    // The same fallback is used once the daily paid-API budget is spent (cost-abuse protection).
+    if (!this.apiKey || this.provider === 'mock' || !consumeDailyAiBudget()) {
       return {
         reply: this.generateFallbackResponse(userMessage, conversationHistory, products),
         providerUsed: 'fallback-rules',

@@ -25,6 +25,17 @@ export const errorHandler = (
     return sendError(res, 'Requested resource not found', 404);
   }
 
-  const message = env.NODE_ENV === 'production' ? 'Internal server error' : err.message;
-  return sendError(res, message, 500, env.NODE_ENV === 'development' ? err.stack : undefined);
+  // Upload problems (file too large, too many files) are client errors, not 500s
+  if (err?.name === 'MulterError') {
+    return sendError(res, err.message || 'Invalid upload', 400);
+  }
+
+  // Malformed JSON / oversized request bodies from body-parser
+  if (err?.type === 'entity.parse.failed' || err?.type === 'entity.too.large') {
+    return sendError(res, err.type === 'entity.too.large' ? 'Request body is too large' : 'Malformed request body', err.status || 400);
+  }
+
+  // Stack traces are logged above, never returned to clients.
+  const message = env.NODE_ENV === 'development' ? err.message : 'Internal server error';
+  return sendError(res, message, 500);
 };

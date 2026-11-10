@@ -14,7 +14,7 @@ export class AdminController {
 
   async updateInventoryStock(req: Request, res: Response, next: NextFunction) {
     try {
-      const stock = parseInt(req.body.stock, 10);
+      const stock = req.body.stock as number; // validated integer >= 0 (InventoryUpdateSchema)
       const product = await adminService.updateInventoryStock(req.params.productId, stock);
       return sendSuccess(res, product, 'Inventory stock updated');
     } catch (error) {
@@ -51,7 +51,8 @@ export class AdminController {
 
   async testSmtp(req: Request, res: Response, next: NextFunction) {
     try {
-      const { recipientEmail } = req.body;
+      // TestSmtpSchema validates the "to" field
+      const recipientEmail: string = req.body.to;
       const result = await adminService.testSmtp(recipientEmail);
       return sendSuccess(res, result, `Test email sent to ${recipientEmail}`);
     } catch (error) {

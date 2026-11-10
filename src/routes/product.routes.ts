@@ -2,11 +2,13 @@
 import { productController } from '../controllers/product.controller';
 import { validateBody, validateQuery } from '../middlewares/validate.middleware';
 import { requireAuth, requireAdmin } from '../middlewares/auth.middleware';
+import { reviewRateLimiter } from '../middlewares/rateLimit.middleware';
 import {
   ProductQuerySchema,
   CreateProductSchema,
   UpdateProductSchema,
   CreateReviewSchema,
+  CreateProductReviewBodySchema,
 } from '@formerbench/shared';
 
 const router = Router();
@@ -18,8 +20,8 @@ router.get('/:idOrSlug', productController.getProduct);
 router.get('/:productId/reviews', productController.getProductReviews);
 
 // Protected routes (Reviews)
-router.post('/reviews', requireAuth, validateBody(CreateReviewSchema), productController.addReview);
-router.post('/:productId/reviews', requireAuth, productController.addReview);
+router.post('/reviews', requireAuth, reviewRateLimiter, validateBody(CreateReviewSchema), productController.addReview);
+router.post('/:productId/reviews', requireAuth, reviewRateLimiter, validateBody(CreateProductReviewBodySchema), productController.addReview);
 
 // Admin-only routes
 router.post('/', requireAuth, requireAdmin, validateBody(CreateProductSchema), productController.createProduct);
