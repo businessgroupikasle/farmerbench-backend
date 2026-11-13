@@ -78,6 +78,12 @@ if (!fs.existsSync(uploadsDir)) {
 app.use(
   '/uploads',
   (req, res, next) => {
+    try {
+      const segments = decodeURIComponent(req.path).replace(/\\/g, '/').split('/');
+      if (segments.some(segment => segment.toLowerCase() === 'private-bookings')) {
+        return res.status(404).json({ success: false, message: 'File not found' });
+      }
+    } catch { return res.status(400).json({ success: false, message: 'Invalid file path' }); }
     const ext = path.extname(req.path).toLowerCase();
     if (!SERVABLE_UPLOAD_EXTENSIONS.has(ext)) {
       return res.status(404).json({ success: false, message: 'File not found' });

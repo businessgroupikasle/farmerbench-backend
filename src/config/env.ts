@@ -16,7 +16,7 @@ const envSchema = z.object({
   GOOGLE_CLIENT_ID: z.string().optional().default(''),
 
   // Google SMTP Email Settings
-  GOOGLE_SMTP_EMAIL: z.string().email().optional().default(''),
+  GOOGLE_SMTP_EMAIL: z.string().email().optional().or(z.literal('')).default(''),
   GOOGLE_SMTP_APP_PASSWORD: z.string().optional().default(''),
   GOOGLE_SMTP_HOST: z.string().default('smtp.gmail.com'),
   GOOGLE_SMTP_PORT: z.coerce.number().default(587),

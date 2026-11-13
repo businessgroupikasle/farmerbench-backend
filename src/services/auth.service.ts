@@ -1,7 +1,7 @@
 import { userRepository } from '../repositories/user.repository';
 import { LoginInput, UpdateProfileInput, ChangePasswordInput } from '@formerbench/shared';
 import { hashPassword, comparePassword } from '../utils/password';
-import { issueSessionToken, MAX_SESSION_AGE_SECONDS, TokenPayload } from '../utils/jwt';
+import { issueSessionToken, MAX_SESSION_AGE_SECONDS, TokenPayload, signRegistrationToken } from '../utils/jwt';
 import { AppError } from '../utils/response';
 import { loginLockout } from '../utils/loginLockout';
 import { OAuth2Client } from 'google-auth-library';
@@ -38,6 +38,14 @@ export class AuthService {
 
     const email = payload.email.toLowerCase();
     const existingUser = await userRepository.findByEmail(email);
+    if (!existingUser) {
+      return {
+        requiresRegistration: true as const,
+        registrationToken: signRegistrationToken(email),
+        email,
+        name: payload.name?.trim() || '',
+      };
+    }
     let passwordHash = existingUser?.password || '';
     if (existingUser) {
       this.ensureAccountIsActive(existingUser);
@@ -51,17 +59,10 @@ export class AuthService {
         passwordHash = '';
       }
     }
-    const user = existingUser
-      ? await userRepository.update(existingUser.id, {
-          emailVerified: true,
-          avatarUrl: existingUser.avatarUrl || payload.picture || null,
-        })
-      : await userRepository.create({
-          email,
-          name: payload.name?.trim() || email.split('@')[0],
-          emailVerified: true,
-          avatarUrl: payload.picture || null,
-        });
+    const user = await userRepository.update(existingUser.id, {
+      emailVerified: true,
+      avatarUrl: existingUser.avatarUrl || payload.picture || null,
+    });
 
     const token = issueSessionToken(user, passwordHash);
     return { user, token };

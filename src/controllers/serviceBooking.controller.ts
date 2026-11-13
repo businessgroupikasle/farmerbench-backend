@@ -1,14 +1,18 @@
 import { Request, Response, NextFunction } from 'express';
 import { serviceBookingService } from '../services/serviceBooking.service';
 import { sendSuccess } from '../utils/response';
+import { saveBookingAttachments, removeBookingAttachments, BookingAttachment } from '../services/bookingAttachments.service';
 
 export class ServiceBookingController {
   async createBooking(req: Request, res: Response, next: NextFunction) {
+    let attachments: BookingAttachment[] = [];
     try {
       const userId = req.user?.userId;
-      const booking = await serviceBookingService.createBooking(req.body, userId);
+      attachments = await saveBookingAttachments((req.files as Express.Multer.File[]) || []);
+      const booking = await serviceBookingService.createBooking(req.body, userId, attachments.map(file => ({ ...file })));
       return sendSuccess(res, booking, 'Service request submitted successfully', 201);
     } catch (error) {
+      await removeBookingAttachments(attachments);
       next(error);
     }
   }

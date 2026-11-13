@@ -158,6 +158,7 @@ export class OrderRepository {
         OR: [
           { paymentMethod: 'CASH_ON_DELIVERY' },
           { paymentStatus: 'PAID' },
+          { orderStatus: 'CANCELLED' },
         ],
       },
       include: {
@@ -179,7 +180,7 @@ export class OrderRepository {
     const where = {
       AND: [
         params.status ? { orderStatus: params.status } : {},
-        { OR: [{ paymentMethod: 'CASH_ON_DELIVERY' as const }, { paymentStatus: 'PAID' as const }] },
+        { OR: [{ paymentMethod: 'CASH_ON_DELIVERY' as const }, { paymentStatus: 'PAID' as const }, { orderStatus: 'CANCELLED' as const }] },
       ],
     };
 

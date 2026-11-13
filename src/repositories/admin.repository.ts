@@ -5,6 +5,7 @@ export class AdminRepository {
     const finalizedOrders = {
       OR: [{ paymentMethod: 'CASH_ON_DELIVERY' as const }, { paymentStatus: 'PAID' as const }],
     };
+    const visibleOrders = { OR: [...finalizedOrders.OR, { orderStatus: 'CANCELLED' as const }] };
     const [
       revenueAggregate,
       totalOrders,
@@ -17,13 +18,13 @@ export class AdminRepository {
         where: finalizedOrders,
         _sum: { totalPrice: true },
       }),
-      prisma.order.count({ where: finalizedOrders }),
+      prisma.order.count({ where: visibleOrders }),
       prisma.product.count(),
       prisma.user.count({
         where: { role: 'CUSTOMER' },
       }),
       prisma.order.findMany({
-        where: finalizedOrders,
+        where: visibleOrders,
         take: 5,
         orderBy: { createdAt: 'desc' },
         include: {

@@ -84,7 +84,7 @@ export const uploadImage = multer({
   },
 });
 
-const matchesSignature = (header: Buffer, mimetype: string): boolean => {
+export const matchesSignature = (header: Buffer, mimetype: string): boolean => {
   switch (mimetype) {
     case 'image/jpeg':
       return header.length >= 3 && header[0] === 0xff && header[1] === 0xd8 && header[2] === 0xff;

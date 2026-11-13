@@ -220,7 +220,34 @@ export class OrderService {
   }
 
   async getUserOrders(userId: string) {
-    return orderRepository.findByUserId(userId);
+    const orders = await orderRepository.findByUserId(userId);
+    const exchangeBookings = await prisma.serviceBooking.findMany({
+      where: {
+        userId,
+        serviceSlug: 'product-exchange',
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const exchangeMap = new Map<string, any>();
+    for (const b of exchangeBookings) {
+      const details = (b.details as any) || {};
+      if (details.orderId && !exchangeMap.has(details.orderId)) {
+        exchangeMap.set(details.orderId, {
+          id: b.id,
+          bookingReference: b.bookingReference,
+          status: b.status,
+          reason: details.reason,
+          details: details.details,
+          createdAt: b.createdAt,
+        });
+      }
+    }
+
+    return orders.map((ord) => ({
+      ...ord,
+      exchangeRequest: exchangeMap.get(ord.id) || null,
+    }));
   }
 
   async getOrderById(orderId: string, userId: string, userRole: string) {
@@ -251,6 +278,158 @@ export class OrderService {
     }
 
     return orderRepository.updateStatus(orderId, input.orderStatus, input.paymentStatus);
+  }
+
+  async cancelOrder(orderId: string, userId: string, reason?: string) {
+    const order = await orderRepository.findById(orderId);
+    if (!order) {
+      throw new AppError('Order not found', 404);
+    }
+    if (order.userId !== userId) {
+      throw new AppError('Unauthorized access to this order', 403);
+    }
+    if (order.orderStatus !== 'PENDING' && order.orderStatus !== 'PROCESSING') {
+      throw new AppError(`Order cannot be cancelled in its current state (${order.orderStatus}). Only Pending or Processing orders can be cancelled.`, 400);
+    }
+
+    const isPrepaid = order.paymentMethod === 'RAZORPAY' && order.paymentStatus === 'PAID';
+
+    const updated = await prisma.order.update({
+      where: { id: orderId },
+      data: {
+        orderStatus: 'CANCELLED',
+        paymentStatus: isPrepaid ? 'REFUNDED' : order.paymentStatus,
+      },
+      include: {
+        items: true,
+        shippingAddress: true,
+        payment: true,
+      },
+    });
+
+    if (order.payment) {
+      await prisma.payment.update({
+        where: { orderId },
+        data: {
+          status: isPrepaid ? 'REFUNDED' : order.payment.status,
+        },
+      });
+    }
+
+    // Restock inventory for items in cancelled order
+    for (const item of order.items) {
+      try {
+        await prisma.product.update({
+          where: { id: item.productId },
+          data: { stock: { increment: item.quantity } },
+        });
+      } catch (err) {
+        console.error(`Failed to restock product ${item.productId}:`, err);
+      }
+    }
+
+    return {
+      order: updated,
+      isPrepaid,
+      refundAmount: isPrepaid ? order.totalPrice : 0,
+      message: isPrepaid
+        ? `Order cancelled successfully. A full refund of ₹${order.totalPrice.toFixed(2)} has been initiated to your original payment method.`
+        : 'Order cancelled successfully.',
+    };
+  }
+
+  async requestExchange(orderId: string, userId: string, data: { reason: string; details?: string; itemIds?: string[] }) {
+    const order = await orderRepository.findById(orderId);
+    if (!order) {
+      throw new AppError('Order not found', 404);
+    }
+    if (order.userId !== userId) {
+      throw new AppError('Unauthorized access to this order', 403);
+    }
+    if (order.orderStatus !== 'DELIVERED') {
+      throw new AppError('Product exchange can only be requested for delivered orders', 400);
+    }
+    if (!data.reason || !data.reason.trim()) {
+      throw new AppError('Please provide a reason for the exchange request (e.g. damaged, defective, or incorrect product)', 400);
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const bookingRef = `EXC-${order.id.slice(0, 6).toUpperCase()}-${Date.now().toString().slice(-4)}`;
+
+    const serviceBooking = await prisma.serviceBooking.create({
+      data: {
+        bookingReference: bookingRef,
+        serviceSlug: 'product-exchange',
+        serviceName: 'Product Exchange Request',
+        name: user?.name || 'Customer',
+        phone: user?.phone || order.shippingAddress?.phone || 'N/A',
+        email: user?.email || null,
+        location: `${order.shippingAddress?.city || ''}, ${order.shippingAddress?.state || ''}`.trim() || 'Tamil Nadu',
+        message: `Order #GL-${order.id.slice(0, 8).toUpperCase()} Exchange Request: ${data.reason.trim()}${data.details ? ` - Details: ${data.details.trim()}` : ''}`,
+        status: 'NEW',
+        userId,
+        details: {
+          orderId: order.id,
+          reason: data.reason.trim(),
+          details: data.details?.trim() || null,
+          itemIds: data.itemIds || [],
+          orderTotal: order.totalPrice,
+          items: order.items.map((it) => ({ id: it.id, title: it.title, quantity: it.quantity })),
+        },
+      },
+    });
+
+    return {
+      success: true,
+      bookingReference: bookingRef,
+      message: 'Product exchange request submitted successfully. Our support team will verify and dispatch your replacement.',
+      exchangeRequest: {
+        id: serviceBooking.id,
+        bookingReference: bookingRef,
+        reason: data.reason.trim(),
+        details: data.details?.trim() || null,
+        createdAt: serviceBooking.createdAt,
+      },
+    };
+  }
+
+  async processRefund(orderId: string) {
+    const order = await orderRepository.findById(orderId);
+    if (!order) {
+      throw new AppError('Order not found', 404);
+    }
+    if (order.paymentStatus === 'REFUNDED') {
+      throw new AppError('This order has already been refunded', 400);
+    }
+    if (order.paymentMethod !== 'RAZORPAY') {
+      throw new AppError('Refunds can only be processed for prepaid online orders', 400);
+    }
+
+    const updated = await prisma.order.update({
+      where: { id: orderId },
+      data: {
+        orderStatus: 'CANCELLED',
+        paymentStatus: 'REFUNDED',
+      },
+      include: {
+        items: true,
+        shippingAddress: true,
+        payment: true,
+      },
+    });
+
+    if (order.payment) {
+      await prisma.payment.update({
+        where: { orderId },
+        data: { status: 'REFUNDED' },
+      });
+    }
+
+    return {
+      order: updated,
+      refundAmount: order.totalPrice,
+      message: `Refund of ₹${order.totalPrice.toFixed(2)} processed successfully for order #GL-${order.id.slice(0, 8).toUpperCase()}`,
+    };
   }
 }
 

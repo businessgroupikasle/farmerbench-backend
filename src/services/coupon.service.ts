@@ -19,9 +19,35 @@ export class CouponService {
 
   async create(data: { code: string; discountType: 'PERCENTAGE' | 'FIXED'; discountValue: number; minimumSpend?: number; usageLimit?: number; validUntil?: string; showOnHomepage?: boolean }) {
     const code = data.code.trim().toUpperCase();
-    if (data.discountValue <= 0 || (data.discountType === 'PERCENTAGE' && data.discountValue > 100)) {
-      throw new AppError('Enter a valid discount value', 400);
+    if (!/^[A-Z0-9]+$/.test(code)) {
+      throw new AppError('Coupon code must contain uppercase letters and numbers only (no spaces or special characters)', 400);
     }
+    if (data.discountValue <= 0) {
+      throw new AppError('Discount value must be greater than 0', 400);
+    }
+    if (data.discountType === 'PERCENTAGE' && data.discountValue > 100) {
+      throw new AppError('Percentage discount cannot exceed 100%', 400);
+    }
+    if (!data.validUntil) {
+      throw new AppError('Valid Until date is required', 400);
+    }
+    const expiryDate = new Date(data.validUntil);
+    if (Number.isNaN(expiryDate.getTime())) {
+      throw new AppError('Invalid expiry date', 400);
+    }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (expiryDate < today) {
+      throw new AppError('Valid Until date cannot be in the past', 400);
+    }
+    // Set to end of day so coupon is valid through the entire selected day
+    expiryDate.setHours(23, 59, 59, 999);
+
+    const existing = await prisma.coupon.findUnique({ where: { code } });
+    if (existing) {
+      throw new AppError(`Coupon code "${code}" already exists. Please choose a different code.`, 409);
+    }
+
     if (data.showOnHomepage) {
       await (prisma.coupon as any).updateMany({ data: { showOnHomepage: false } });
     }
@@ -31,8 +57,8 @@ export class CouponService {
         discountType: data.discountType,
         discountValue: data.discountValue,
         minimumSpend: Math.max(0, data.minimumSpend || 0),
-        usageLimit: data.usageLimit && data.usageLimit > 0 ? data.usageLimit : null,
-        validUntil: data.validUntil ? new Date(data.validUntil) : null,
+        usageLimit: data.usageLimit && data.usageLimit > 0 ? Math.floor(data.usageLimit) : null,
+        validUntil: expiryDate,
         showOnHomepage: Boolean(data.showOnHomepage),
       },
     });

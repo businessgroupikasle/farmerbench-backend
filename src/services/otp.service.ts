@@ -129,10 +129,17 @@ export class OtpService {
 
     this.devLogOtp('REGISTRATION', email, rawOtp, expiresAt);
 
-    // Dispatch email asynchronously
-    emailService.sendRegistrationOtpEmail(email, rawOtp, input.name || email.split('@')[0]).catch((err) => {
-      console.error('Failed to send registration OTP email:', err);
-    });
+    // Await delivery so the API never reports success when SMTP actually failed.
+    try {
+      await emailService.sendRegistrationOtpEmail(email, rawOtp, input.name || email.split('@')[0]);
+    } catch (err: any) {
+      console.error('Failed to send registration OTP email:', err?.message || err);
+      await otpRepository.invalidatePending(email, 'REGISTRATION');
+      throw new AppError(
+        'Unable to send verification email. Please check that your email address is correct or try again in a few moments.',
+        503
+      );
+    }
 
     return {
       success: true,
@@ -272,9 +279,17 @@ export class OtpService {
 
     this.devLogOtp('LOGIN', email, rawOtp, expiresAt);
 
-    emailService.sendLoginOtpEmail(email, rawOtp, user.name).catch((err) => {
-      console.error('Failed to send login OTP email:', err);
-    });
+    // Await delivery so the API never reports success when SMTP actually failed.
+    try {
+      await emailService.sendLoginOtpEmail(email, rawOtp, user.name);
+    } catch (err: any) {
+      console.error('Failed to send login OTP email:', err?.message || err);
+      await otpRepository.invalidatePending(email, 'LOGIN');
+      throw new AppError(
+        'Unable to send login verification email. Please try again in a few moments.',
+        503
+      );
+    }
 
     return {
       success: true,

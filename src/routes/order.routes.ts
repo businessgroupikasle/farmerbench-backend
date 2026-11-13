@@ -10,8 +10,13 @@ router.post('/', requireAuth, validateBody(CreateOrderSchema), orderController.c
 router.get('/my-orders', requireAuth, orderController.getMyOrders);
 router.get('/:id', requireAuth, orderController.getOrder);
 
+// Customer Order Actions
+router.post('/:id/cancel', requireAuth, orderController.cancelOrder);
+router.post('/:id/exchange', requireAuth, orderController.requestExchange);
+
 // Admin-only order routes
 router.get('/', requireAuth, requireAdmin, orderController.getAllOrders);
 router.put('/:id/status', requireAuth, requireAdmin, validateBody(UpdateOrderStatusSchema), orderController.updateOrderStatus);
+router.post('/:id/refund', requireAuth, requireAdmin, orderController.processRefund);
 
 export default router;

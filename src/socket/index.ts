@@ -48,6 +48,9 @@ export const initSocketIO = (httpServer: HttpServer): SocketIOServer => {
     if (socket.data.role === 'ADMIN') {
       socket.join(ADMIN_ROOM);
     }
+    if (socket.data.userId) {
+      socket.join(`user:${socket.data.userId}`);
+    }
     console.log(`🔌 Client connected to Socket.IO: ${socket.id}${socket.data.role === 'ADMIN' ? ' (admin)' : ''}`);
 
     socket.on('disconnect', (reason) => {
@@ -130,6 +133,9 @@ export const emitBookingUpdated = (booking: any) => {
   if (!io) return;
   console.log(`📢 Sending Socket.IO event 'booking:updated' to admins: ${booking.bookingReference} status -> ${booking.status}`);
   io.to(ADMIN_ROOM).emit('booking:updated', booking);
+  if (booking?.userId) {
+    io.to(`user:${booking.userId}`).emit('booking:updated', booking);
+  }
 };
 
 

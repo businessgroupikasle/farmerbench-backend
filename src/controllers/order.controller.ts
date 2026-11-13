@@ -51,6 +51,33 @@ export class OrderController {
       next(error);
     }
   }
+
+  async cancelOrder(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await orderService.cancelOrder(req.params.id, req.user!.userId, req.body?.reason);
+      return sendSuccess(res, result.order, result.message);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async requestExchange(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await orderService.requestExchange(req.params.id, req.user!.userId, req.body);
+      return sendSuccess(res, result, result.message);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async processRefund(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await orderService.processRefund(req.params.id);
+      return sendSuccess(res, result.order, result.message);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const orderController = new OrderController();

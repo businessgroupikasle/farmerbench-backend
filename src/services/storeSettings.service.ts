@@ -17,6 +17,8 @@ export const storeSettingsService = {
     freeShippingThreshold: number;
     shippingPolicyEffectiveDate?: string | null;
     returnPolicyEffectiveDate?: string | null;
+    maintenanceMode?: boolean;
+    maintenanceMessage?: string;
   }) {
     const standardShippingFee = Number(input.standardShippingFee);
     const freeShippingThreshold = Number(input.freeShippingThreshold);
@@ -32,6 +34,8 @@ export const storeSettingsService = {
       return parsed;
     };
     const dates = {
+      maintenanceMode: input.maintenanceMode,
+      maintenanceMessage: input.maintenanceMessage,
       shippingPolicyEffectiveDate: parseDate(input.shippingPolicyEffectiveDate, 'Shipping policy effective date'),
       returnPolicyEffectiveDate: parseDate(input.returnPolicyEffectiveDate, 'Return policy effective date'),
     };

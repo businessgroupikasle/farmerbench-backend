@@ -52,7 +52,7 @@ export const RegisterSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   name: z.string().min(2, 'Name must be at least 2 characters'),
-  phone: IndianMobileSchema.optional().nullable(),
+  phone: IndianMobileSchema,
   location: z.string().optional().nullable(),
   crops: z.string().optional().nullable(),
 });
@@ -244,7 +244,7 @@ export const ProductQuerySchema = z.object({
   minPrice: z.coerce.number().positive().optional(),
   maxPrice: z.coerce.number().positive().optional(),
   minRating: z.coerce.number().min(0).max(5).optional(),
-  sortBy: z.enum(['newest', 'price_asc', 'price_desc', 'rating', 'popular']).default('newest'),
+  sortBy: z.enum(['newest', 'price_asc', 'price_desc', 'rating', 'popular', 'best_selling']).default('newest'),
   featured: z.preprocess((val) => (val === undefined || val === '' ? undefined : val === 'true' || val === true), z.boolean().optional()),
 });
 
@@ -371,7 +371,9 @@ export const CreateServiceBookingSchema = z.object({
   farmSize: z.string().optional().nullable(),
   cropType: z.string().optional().nullable(),
   preferredDate: z.string().optional().nullable(),
-  message: z.string().max(2000, 'Message cannot exceed 2000 characters').optional().nullable(),
+  message: z.string().max(20000, 'Message cannot exceed 20000 characters').optional().nullable(),
+  details: z.record(z.union([z.string().max(10000), z.number().finite(), z.boolean(), z.null(), z.array(z.string().max(1000)).max(50)]))
+    .refine((value) => Object.keys(value).length <= 100 && JSON.stringify(value).length <= 50000, 'Service details are too long').optional(),
 });
 
 export const UpdateServiceBookingStatusSchema = z.object({

@@ -71,23 +71,39 @@ export class ProductRepository {
     else if (sortBy === 'rating') orderBy = { rating: 'desc' };
     else if (sortBy === 'popular') orderBy = { numReviews: 'desc' };
 
+    let rankedIds: string[] | undefined;
+    if (sortBy === 'best_selling') {
+      const [candidates, sales] = await Promise.all([
+        prisma.product.findMany({ where, select: { id: true, featured: true, rating: true, createdAt: true } }),
+        prisma.orderItem.groupBy({
+          by: ['productId'],
+          where: { order: { orderStatus: { not: 'CANCELLED' }, OR: [{ paymentStatus: 'PAID' }, { paymentMethod: 'CASH_ON_DELIVERY' }] } },
+          _sum: { quantity: true },
+        }),
+      ]);
+      const sold = new Map(sales.map(item => [item.productId, item._sum.quantity || 0]));
+      rankedIds = candidates.sort((a, b) => (sold.get(b.id) || 0) - (sold.get(a.id) || 0)
+        || Number(b.featured) - Number(a.featured) || b.rating - a.rating || b.createdAt.getTime() - a.createdAt.getTime() || a.id.localeCompare(b.id))
+        .slice(skip, skip + limit).map(product => product.id);
+    }
+
     const [products, total] = await Promise.all([
       prisma.product.findMany({
-        where,
+        where: rankedIds ? { AND: [where, { id: { in: rankedIds } }] } : where,
         include: {
           category: true,
           subcategory: true,
           reviews: { select: { rating: true } },
         },
         orderBy,
-        skip,
+        skip: rankedIds ? 0 : skip,
         take: limit,
       }),
       prisma.product.count({ where }),
     ]);
 
     return {
-      products: products.map((product) => ({
+      products: (rankedIds ? products.sort((a, b) => rankedIds!.indexOf(a.id) - rankedIds!.indexOf(b.id)) : products).map((product) => ({
         ...product,
         numReviews: product.reviews.length,
         rating: product.reviews.length

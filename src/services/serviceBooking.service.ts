@@ -1,4 +1,6 @@
 import crypto from 'crypto';
+import { Prisma } from '@prisma/client';
+import { removeBookingAttachments, BookingAttachment } from './bookingAttachments.service';
 import { serviceBookingRepository } from '../repositories/serviceBooking.repository';
 import { CreateServiceBookingInput, UpdateServiceBookingStatusInput, ServiceBookingQueryInput } from '@formerbench/shared';
 import { AppError } from '../utils/response';
@@ -10,7 +12,7 @@ export class ServiceBookingService {
     return `FB-SB-${randomDigits}`;
   }
 
-  async createBooking(input: CreateServiceBookingInput, userId?: string) {
+  async createBooking(input: CreateServiceBookingInput, userId?: string, attachments: Prisma.InputJsonArray = []) {
     let bookingReference = this.generateReferenceId();
 
     // Ensure uniqueness of reference
@@ -36,6 +38,8 @@ export class ServiceBookingService {
       cropType: input.cropType || null,
       preferredDate: isNaN(preferredDate?.getTime() || NaN) ? null : preferredDate,
       message: input.message || null,
+      details: input.details,
+      attachments,
       userId: userId || null,
     });
 
@@ -85,7 +89,9 @@ export class ServiceBookingService {
       throw new AppError('Service booking not found', 404);
     }
 
-    return serviceBookingRepository.delete(id);
+    const deleted = await serviceBookingRepository.delete(id);
+    await removeBookingAttachments((booking.attachments || []) as unknown as BookingAttachment[]);
+    return deleted;
   }
 
   async getBookingStats() {

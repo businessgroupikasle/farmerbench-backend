@@ -15,6 +15,8 @@ export class ServiceBookingRepository {
     cropType?: string | null;
     preferredDate?: Date | null;
     message?: string | null;
+    details?: Prisma.InputJsonObject;
+    attachments?: Prisma.InputJsonArray;
     userId?: string | null;
   }) {
     return prisma.serviceBooking.create({
@@ -30,6 +32,8 @@ export class ServiceBookingRepository {
         cropType: data.cropType || null,
         preferredDate: data.preferredDate || null,
         message: data.message || null,
+        details: data.details,
+        attachments: data.attachments,
         userId: data.userId || null,
       },
       include: {

@@ -319,6 +319,8 @@ model Review {
 }
 
 model ServiceBooking {
+  details              Json?
+  attachments          Json?
   id               String        @id @default(uuid())
   bookingReference String        @unique
   serviceSlug      String
@@ -458,6 +460,8 @@ model AgronomyExpert {
   @@index([isActive])
 }
 model StoreSettings {
+  maintenanceMode       Boolean  @default(false)
+  maintenanceMessage    String   @default("We are making improvements. Please check back soon.")
   id                    String   @id @default("store")
   standardShippingFee   Float    @default(80)
   freeShippingThreshold Float    @default(5000)
